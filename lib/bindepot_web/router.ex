@@ -20,10 +20,25 @@ defmodule BindepotWeb.Router do
     get "/", PageController, :home
   end
 
-  # Other scopes may use custom stacks.
-  # scope "/api", BindepotWeb do
-  #   pipe_through :api
-  # end
+  scope "/bindepot", BindepotWeb do
+    pipe_through :api
+
+    scope "/api", Api do
+      put "/repositories/:repository", RepositoryController, :create_repository
+      delete "/repositories/:repository", RepositoryController, :delete_repository
+
+      scope "/pypi" do
+        get "/:repository/simple/", PypiController, :simple_index
+        get "/:repository/simple/:name/", PypiController, :project_index
+
+        get "/:repository/packages/:project/:version/:filename", PypiController, :serve_package
+        get "/:repository/packages/:project/:version/:filename/METADATA", PypiController, :serve_metadata
+
+        post "/:repository/legacy/", PypiController, :legacy_upload
+        # post "/:repository/pypi", PypiController, :xmlrpc
+      end
+    end
+  end
 
   # Enable LiveDashboard in development
   if Application.compile_env(:bindepot, :dev_routes) do
