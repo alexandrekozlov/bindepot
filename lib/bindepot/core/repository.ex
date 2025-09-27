@@ -26,7 +26,6 @@ defmodule Bindepot.Core.Repository do
       :remote -> :ok
       :virtual -> :ok
     end
-
   end
 
   defp create_remote_repository(name, package_type, properties) do

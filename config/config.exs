@@ -11,6 +11,9 @@ config :bindepot,
   ecto_repos: [Bindepot.Repo],
   generators: [timestamp_type: :utc_datetime]
 
+config :bindepot,
+  data_dir: System.get_env("BINDEPOT_DATA_DIR", "/var/lib/bindepot/data")
+
 # Configures the endpoint
 config :bindepot, BindepotWeb.Endpoint,
   url: [host: "localhost"],
