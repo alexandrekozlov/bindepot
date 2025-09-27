@@ -9,6 +9,7 @@ defmodule Bindepot.Core.Repository do
     field :name, :string
     field :repository_type, :string
     field :package_type, :string
+    field :configuration, :map    # %RepositoryConfiguration{}
     field :properties, :map
     timestamps()
   end
@@ -20,7 +21,7 @@ defmodule Bindepot.Core.Repository do
     |> unique_constraint(:name)
   end
 
-  def create_repository(_name, repository_type, _package_type, _properties) do
+  def create_repository(name, repository_type, package_type, configuration, properties) do
     case repository_type do
       :local -> :ok
       :remote -> :ok
@@ -28,18 +29,15 @@ defmodule Bindepot.Core.Repository do
     end
   end
 
-  defp create_remote_repository(name, package_type, properties) do
-    url = Map.fetch!(properties, "url")
+  defp do_create_repo!(name, repository_type, package_type, configuration, properties) do
+    { :ok, %{ id: id } } = %Repository{}
+      |> Repository.changeset(%{name: name, repository_type: :local, package_type: package_type, properties: properties})
+      |> Repo.insert!()
 
-    Repo.transact(fn ->
-      { :ok, %{ id: id } } = %Repository{}
-        |> Repository.changeset(%{name: name, repository_type: :local, package_type: package_type, properties: properties})
-        |> Repo.insert!()
+    # handle uploaded file if present
+    File.mkdir_p!(Path.join("cache", id))
+    {:ok, id}
 
-      # handle uploaded file if present
-      File.mkdir_p!(Path.join("cache", id))
-      {:ok, id}
-    end)
   end
 
 end
