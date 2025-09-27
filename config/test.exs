@@ -1,5 +1,9 @@
 import Config
 
+config :bindepot,
+  cache_dir: System.get_env("BINDEPOT_CACHE_DIR", Path.join(System.fetch_env!("HOME"), ".bindepot/cache")),
+  data_dir: System.get_env("BINDEPOT_DATA_DIR", Path.join(System.fetch_env!("HOME"), ".bindepot/data"))
+
 # Configure your database
 #
 # The MIX_TEST_PARTITION environment variable can be used

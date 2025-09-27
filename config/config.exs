@@ -12,6 +12,7 @@ config :bindepot,
   generators: [timestamp_type: :utc_datetime]
 
 config :bindepot,
+  cache_dir: System.get_env("BINDEPOT_CACHE_DIR", "/var/lib/bindepot/cache"),
   data_dir: System.get_env("BINDEPOT_DATA_DIR", "/var/lib/bindepot/data")
 
 # Configures the endpoint
