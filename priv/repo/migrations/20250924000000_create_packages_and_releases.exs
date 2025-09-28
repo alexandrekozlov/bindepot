@@ -2,7 +2,8 @@ defmodule Bindepot.Repo.Migrations.CreatePackagesAndReleases do
   use Ecto.Migration
 
   def change do
-    create table(:repositories) do
+    create table(:repositories, primary_key: false) do
+      add :id, :binary_id, primary_key: true
       add :name, :string, null: false
       add :repository_type, :string
       add :package_type, :string
@@ -11,7 +12,7 @@ defmodule Bindepot.Repo.Migrations.CreatePackagesAndReleases do
 
     create table(:pypi_packages) do
       add :name, :string, null: false
-      add :repository_id, references(:repositories, on_delete: :delete_all), null: false
+      add :repository_id, references(:repositories, type: :binary_id, on_delete: :delete_all), null: false
       timestamps()
     end
 

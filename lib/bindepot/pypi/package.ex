@@ -4,7 +4,7 @@ defmodule Bindepot.Pypi.Package do
 
   schema "pypi_packages" do
     field :name, :string
-    belongs_to :repository, Bindepot.Core.Repository
+    belongs_to :repository, Bindepot.Core.Repository, type: :binary_id, on_replace: :update
     has_many :pypi_releases, Bindepot.Pypi.Release, foreign_key: :pypi_package_id
     timestamps()
   end

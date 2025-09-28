@@ -2,9 +2,11 @@ defmodule Bindepot.Core.Repository do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Ecto.UUID
   alias Bindepot.Repo
   alias Bindepot.Core.Repository
+
+  @primary_key {:id, :binary_id, autogenerate: true }
+  # @foreign_key_type Ecto.UUID
 
   schema "repositories" do
     field :name, :string
@@ -69,7 +71,8 @@ defmodule Bindepot.Core.Repository do
       |> Repository.changeset(params)
       |> Repo.insert!()
 
-    Path.join(Application.fetch_env!(:bindepot, :data_dir), to_string(repo.id))
+    Application.fetch_env!(:bindepot, :data_dir)
+      |> Path.join(Ecto.UUID.cast!(repo.id))
       |> File.mkdir_p!()
     {:ok, repo.id}
   end
