@@ -7,6 +7,8 @@ defmodule Bindepot.Repo.Migrations.CreatePackagesAndReleases do
       add :name, :string, null: false
       add :repository_type, :string
       add :package_type, :string
+      add :configuration, :map
+      add :properties, :map
       timestamps()
     end
 

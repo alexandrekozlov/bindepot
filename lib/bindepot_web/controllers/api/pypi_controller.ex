@@ -1,6 +1,8 @@
 defmodule BindepotWeb.Api.PypiController do
   use BindepotWeb, :controller
 
+  alias Bindepot.Pypi.Repository
+
   defp wants_pep691_json?(conn) do
     accept = Enum.join(get_req_header(conn, "accept"), ",")
     query = conn.query_params
@@ -14,17 +16,24 @@ defmodule BindepotWeb.Api.PypiController do
 
   defp json_content_type, do: "application/vnd.pypi.simple.v1+json"
 
-  def simple_index(conn, %{ "repository" => repository }) do
+  def simple_index(conn, %{"repository" => repository}) do
     body = "test"
-    conn |> put_resp_content_type("text/html") |> send_resp(200, "<html><body>\n" <> body <> "\n</body></html>")
+
+    conn
+    |> put_resp_content_type("text/html")
+    |> send_resp(200, "<html><body>\n" <> body <> "\n</body></html>")
   end
 
   def project_index(conn, %{"name" => name}) do
-    conn |> put_resp_content_type("text/html") |> send_resp(200, "<html><body>\n" <> name <> "\n</body></html>")
+    conn
+    |> put_resp_content_type("text/html")
+    |> send_resp(200, "<html><body>\n" <> name <> "\n</body></html>")
   end
 
   def serve_package(conn, %{"project" => project, "version" => version, "filename" => filename}) do
-    conn |> put_resp_content_type("text/html") |> send_resp(200, "<html><body>\n" <> filename <> "\n</body></html>")
+    conn
+    |> put_resp_content_type("text/html")
+    |> send_resp(200, "<html><body>\n" <> filename <> "\n</body></html>")
   end
 
   def serve_metadata(conn, %{"project" => project, "version" => version, "filename" => _filename}) do
@@ -32,7 +41,17 @@ defmodule BindepotWeb.Api.PypiController do
   end
 
   def legacy_upload(conn, params) do
-    conn |> put_resp_content_type("application/json") |> send_resp(200, Jason.encode!(%{ok: true, id: 1}))
-  end
+    # use Repository.create_upload/2 to save uploaded file and metadata
+    case Repository.handle_legacy_upload(params) do
+      {:ok, record} ->
+        conn
+        |> put_resp_content_type("application/json")
+        |> send_resp(200, Jason.encode!(%{ok: true, id: record.id}))
 
+      {:error, reason} ->
+        conn
+        |> put_resp_content_type("application/json")
+        |> send_resp(400, Jason.encode!(%{error: inspect(reason)}))
+    end
+  end
 end

@@ -6,7 +6,6 @@ defmodule Bindepot.Core.Repository do
   alias Bindepot.Core.Repository
 
   @primary_key {:id, :binary_id, autogenerate: true }
-  # @foreign_key_type Ecto.UUID
 
   schema "repositories" do
     field :name, :string
@@ -19,7 +18,7 @@ defmodule Bindepot.Core.Repository do
 
   def changeset(pkg, attrs) do
     pkg
-    |> cast(attrs, [:name, :repository_type, :package_type])
+    |> cast(attrs, [:name, :repository_type, :package_type, :configuration, :properties])
     |> validate_required([:name, :repository_type, :package_type])
     |> unique_constraint(:name)
   end
@@ -45,7 +44,7 @@ defmodule Bindepot.Core.Repository do
     case Map.fetch(configuration, "url") do
       {:ok, url} when is_binary(url) -> { :ok, nil }
       {:ok, _} -> { :error, "'url' parameter must be string"}
-      {:error, _} -> {:error, "remote repository requires 'url' configuration parameter"}
+      :error -> {:error, "remote repository requires 'url' configuration parameter"}
     end
   end
 
