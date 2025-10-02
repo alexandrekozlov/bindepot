@@ -1,19 +1,22 @@
-defmodule Bindepot.Pypi.DistFile do
+defmodule Bindepot.PyPI.DistFile do
   use Ecto.Schema
   import Ecto.Changeset
 
+  @primary_key {:id, :binary_id, autogenerate: true}
   schema "pypi_dist_files" do
+    field :release_id, :binary_id
     field :filename, :string
-    field :url, :string
-    field :path, :string
-    field :hashes, :map
-    belongs_to :pypi_release, Bindepot.Pypi.Release
+    field :file_path, :string
+    field :size, :integer
+    field :sha256, :string
+    field :content_type, :string
     timestamps()
   end
 
   def changeset(df, attrs) do
     df
-    |> cast(attrs, [:filename, :url, :path, :hashes, :release_id])
-    |> validate_required([:filename, :release_id])
+    |> cast(attrs, [:release_id, :filename, :file_path, :size, :sha256, :content_type])
+    |> validate_required([:release_id, :filename, :file_path, :size, :sha256])
+    |> foreign_key_constraint(:release_id)
   end
 end

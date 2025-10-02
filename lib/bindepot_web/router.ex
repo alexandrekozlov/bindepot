@@ -27,16 +27,16 @@ defmodule BindepotWeb.Router do
       put "/repositories/:repository", RepositoryController, :create_repository
       delete "/repositories/:repository", RepositoryController, :delete_repository
 
-      scope "/pypi" do
-        get "/:repository/simple/", PypiController, :simple_index
-        get "/:repository/simple/:name/", PypiController, :project_index
+      # scope "/pypi" do
+      #   get "/:repository/simple/", PypiController, :simple_index
+      #   get "/:repository/simple/:name/", PypiController, :project_index
 
-        get "/:repository/packages/:project/:version/:filename", PypiController, :serve_package
-        get "/:repository/packages/:project/:version/:filename/METADATA", PypiController, :serve_metadata
+      #   get "/:repository/packages/:project/:version/:filename", PypiController, :serve_package
+      #   get "/:repository/packages/:project/:version/:filename/METADATA", PypiController, :serve_metadata
 
-        post "/:repository/legacy/", PypiController, :legacy_upload
-        # post "/:repository/pypi", PypiController, :xmlrpc
-      end
+      #   post "/:repository/legacy/", PypiController, :legacy_upload
+      #   # post "/:repository/pypi", PypiController, :xmlrpc
+      # end
     end
   end
 
