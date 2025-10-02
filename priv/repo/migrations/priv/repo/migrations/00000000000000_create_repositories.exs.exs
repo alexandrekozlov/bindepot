@@ -9,7 +9,10 @@ defmodule Bindepot.Repo.Migrations.CreateRepositories do
       add :package_type, :string, null: false
       add :configuration, :map, default: %{}, null: false
       add :properties, :map, default: %{}, null: false
-      timestamps()
+
+      add :inserted_at, :naive_datetime_usec, null: false
+      add :updated_at, :naive_datetime_usec, null: false
+      add :deleted_at, :naive_datetime_usec
     end
 
     create unique_index(:repositories, [:name])
@@ -18,7 +21,7 @@ defmodule Bindepot.Repo.Migrations.CreateRepositories do
     create index(:repositories, [:deleted_at])
 
     # PyPI
-    create table(:pypi_packages) do
+    create table(:pypi_packages, primary_key: false) do
       add :id, :uuid, primary_key: true, null: false
       add :repo_id, :uuid, null: false
       add :name, :string, null: false
@@ -29,7 +32,7 @@ defmodule Bindepot.Repo.Migrations.CreateRepositories do
     create index(:pypi_packages, [:repo_id])
     create unique_index(:pypi_packages, [:repo_id, :normalized_name], name: :pypi_packages_repo_id_normalized_name_index)
 
-    create table(:pypi_releases) do
+    create table(:pypi_releases, primary_key: false) do
       add :id, :uuid, primary_key: true, null: false
       add :pkg_id, :uuid, null: false
       add :version, :string, null: false
@@ -40,7 +43,7 @@ defmodule Bindepot.Repo.Migrations.CreateRepositories do
     create index(:pypi_releases, [:pkg_id])
     create unique_index(:pypi_releases, [:pkg_id, :version], name: :pypi_releases_pkg_id_version_index)
 
-    create table(:pypi_dist_files) do
+    create table(:pypi_dist_files, primary_key: false) do
       add :id, :uuid, primary_key: true, null: false
       add :release_id, :uuid, null: false
       add :filename, :string, null: false
@@ -53,7 +56,7 @@ defmodule Bindepot.Repo.Migrations.CreateRepositories do
     create index(:pypi_dist_files, [:release_id])
 
     # NPM
-    create table(:npm_packages) do
+    create table(:npm_packages, primary_key: false) do
       add :id, :uuid, primary_key: true, null: false
       add :repo_id, :uuid, null: false
       add :name, :string, null: false
@@ -63,7 +66,7 @@ defmodule Bindepot.Repo.Migrations.CreateRepositories do
     end
     create index(:npm_packages, [:repo_id])
 
-    create table(:npm_versions) do
+    create table(:npm_versions, primary_key: false) do
       add :id, :uuid, primary_key: true, null: false
       add :pkg_id, :uuid, null: false
       add :version, :string, null: false
@@ -74,7 +77,7 @@ defmodule Bindepot.Repo.Migrations.CreateRepositories do
     create index(:npm_versions, [:pkg_id])
 
     # RPM
-    create table(:rpm_packages) do
+    create table(:rpm_packages, primary_key: false) do
       add :id, :uuid, primary_key: true, null: false
       add :repo_id, :uuid, null: false
       add :name, :string, null: false
@@ -87,7 +90,7 @@ defmodule Bindepot.Repo.Migrations.CreateRepositories do
     create index(:rpm_packages, [:repo_id])
 
     # Puppet
-    create table(:puppet_modules) do
+    create table(:puppet_modules, primary_key: false) do
       add :id, :uuid, primary_key: true, null: false
       add :repo_id, :uuid, null: false
       add :name, :string, null: false
@@ -99,7 +102,7 @@ defmodule Bindepot.Repo.Migrations.CreateRepositories do
     create index(:puppet_modules, [:repo_id])
 
     # R
-    create table(:r_packages) do
+    create table(:r_packages, primary_key: false) do
       add :id, :uuid, primary_key: true, null: false
       add :repo_id, :uuid, null: false
       add :name, :string, null: false

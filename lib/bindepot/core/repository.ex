@@ -9,14 +9,23 @@ defmodule Bindepot.Core.Repository do
     field :package_type, :string
     field :configuration, :map, default: %{}
     field :properties, :map, default: %{}
-    field :deleted_at, :naive_datetime_usec
+
     timestamps()
+    field :deleted_at, :naive_datetime_usec
   end
 
   @repo_types ~w(local remote virtual)
   def changeset(repo, attrs) do
     repo
-    |> cast(attrs, [:id, :name, :repository_type, :package_type, :configuration, :properties, :deleted_at])
+    |> cast(attrs, [
+      :id,
+      :name,
+      :repository_type,
+      :package_type,
+      :configuration,
+      :properties,
+      :deleted_at
+    ])
     |> validate_required([:name, :repository_type, :package_type])
     |> validate_inclusion(:repository_type, @repo_types)
     |> validate_configuration()
@@ -34,6 +43,9 @@ defmodule Bindepot.Core.Repository do
   defp validate_required_in_map(changeset, keys) do
     cfg = get_field(changeset, :configuration) || %{}
     missing = Enum.filter(keys, &(!Map.has_key?(cfg, &1)))
-    if missing == [], do: changeset, else: add_error(changeset, :configuration, "missing keys: #{Enum.join(missing, ", ")}")
+
+    if missing == [],
+      do: changeset,
+      else: add_error(changeset, :configuration, "missing keys: #{Enum.join(missing, ", ")}")
   end
 end
