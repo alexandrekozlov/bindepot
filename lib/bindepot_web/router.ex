@@ -18,6 +18,8 @@ defmodule BindepotWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :home
+
+    live "/repo", ItemLive.Index, :index
   end
 
   scope "/bindepot", BindepotWeb do
