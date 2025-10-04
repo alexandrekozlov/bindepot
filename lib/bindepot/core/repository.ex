@@ -16,6 +16,9 @@ defmodule Bindepot.Core.Repository do
 
   @repo_types ~w(local remote virtual)
   def changeset(repo, attrs) do
+    IO.inspect(repo)
+    IO.inspect(attrs)
+
     repo
     |> cast(attrs, [
       :id,

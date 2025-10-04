@@ -39,8 +39,8 @@ defmodule Bindepot.Core.Repositories do
           # ensure we pass the same id to DB insert so path and DB are in sync
           attrs_with_id =
             case desired_id do
-              id when is_binary(id) -> Map.put(attrs, :id, id)
-              _ -> Map.put(attrs, :id, id_for_path)
+              id when is_binary(id) -> Map.put(attrs, "id", id)
+              _ -> Map.put(attrs, "id", id_for_path)
             end
 
           Repo.transaction(fn ->
