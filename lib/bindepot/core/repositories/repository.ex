@@ -1,4 +1,4 @@
-defmodule Bindepot.Core.Repository do
+defmodule Bindepot.Core.Repositories.Repository do
   use Ecto.Schema
   import Ecto.Changeset
 

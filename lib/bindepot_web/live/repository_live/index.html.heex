@@ -1,0 +1,32 @@
+<Layouts.app flash={@flash}>
+    <.header>
+    Listing Repositories
+    <:actions>
+        <.button variant="primary" navigate={~p"/ui/repositories/new"}>
+        <.icon name="hero-plus" /> New Repository
+        </.button>
+    </:actions>
+    </.header>
+
+    <.table
+    id="repositories"
+    rows={@streams.repositories}
+    row_click={fn {_id, repository} -> JS.navigate(~p"/ui/repositories/#{repository}") end}
+    >
+    <:col :let={{_id, repository}} label="Name">{repository.name}</:col>
+    <:action :let={{_id, repository}}>
+        <div class="sr-only">
+        <.link navigate={~p"/ui/repositories/#{repository}"}>Show</.link>
+        </div>
+        <.link navigate={~p"/ui/repositories/#{repository}/edit"}>Edit</.link>
+    </:action>
+    <:action :let={{id, repository}}>
+        <.link
+        phx-click={JS.push("delete", value: %{id: repository.id}) |> hide("##{id}")}
+        data-confirm="Are you sure?"
+        >
+        Delete
+        </.link>
+    </:action>
+    </.table>
+</Layouts.app>

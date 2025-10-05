@@ -20,6 +20,12 @@ defmodule BindepotWeb.Router do
     get "/", PageController, :home
 
     live "/repo", ItemLive.Index, :index
+
+    scope "/ui" do
+      live "/repositories", RepositoryLive.Index, :index
+      live "/repositories/new", RepositoryLive.Form, :new
+      live "/repositories/edit", RepositoryLive.Form, :edit
+    end
   end
 
   scope "/bindepot", BindepotWeb do

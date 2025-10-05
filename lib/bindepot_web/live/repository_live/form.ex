@@ -1,0 +1,74 @@
+defmodule BindepotWeb.RepositoryLive.Form do
+  use BindepotWeb, :live_view
+
+  alias Bindepot.Core.Repositories
+  alias Bindepot.Core.Repositories.Repository
+
+  @impl true
+  def mount(params, _session, socket) do
+    {:ok,
+     socket
+     |> assign(:return_to, return_to(params["return_to"]))
+     |> apply_action(socket.assigns.live_action, params)}
+  end
+
+  defp return_to("show"), do: "show"
+  defp return_to(_), do: "index"
+
+  defp apply_action(socket, :edit, %{"id" => id}) do
+    repository = Repositories.get_repository!(id)
+
+    socket
+    |> assign(:page_title, "Edit Repository")
+    |> assign(:repository, repository)
+    |> assign(:form, to_form(Repositories.change_repository(repository)))
+  end
+
+  defp apply_action(socket, :new, _params) do
+    repository = %Repository{}
+
+    socket
+    |> assign(:page_title, "New Repository")
+    |> assign(:repository, repository)
+    |> assign(:form, to_form(Repositories.change_repository(repository)))
+  end
+
+  @impl true
+  def handle_event("validate", %{"repository" => repository_params}, socket) do
+    changeset = Repositories.change_repository(socket.assigns.repository, repository_params)
+    {:noreply, assign(socket, form: to_form(changeset, action: :validate))}
+  end
+
+  def handle_event("save", %{"repository" => repository_params}, socket) do
+    save_repository(socket, socket.assigns.live_action, repository_params)
+  end
+
+  defp save_repository(socket, :edit, repository_params) do
+    case Repositories.update_repository(socket.assigns.repository, repository_params) do
+      {:ok, repository} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, "Repository updated successfully")
+         |> push_navigate(to: return_path(socket.assigns.return_to, repository))}
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        {:noreply, assign(socket, form: to_form(changeset))}
+    end
+  end
+
+  defp save_repository(socket, :new, repository_params) do
+    case Repositories.create_repository(repository_params) do
+      {:ok, repository} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, "Repository created successfully")
+         |> push_navigate(to: return_path(socket.assigns.return_to, repository))}
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        {:noreply, assign(socket, form: to_form(changeset))}
+    end
+  end
+
+  defp return_path("index", _repository), do: ~p"/ui/repositories"
+  defp return_path("show", repository), do: ~p"/ui/repositories/#{repository}"
+end

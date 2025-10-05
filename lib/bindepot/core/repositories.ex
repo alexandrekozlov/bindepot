@@ -7,7 +7,7 @@ defmodule Bindepot.Core.Repositories do
 
   import Ecto.Query, warn: false
   alias Bindepot.Repo
-  alias Bindepot.Core.Repository
+  alias Bindepot.Core.Repositories.Repository
 
   require Logger
 
@@ -165,6 +165,14 @@ defmodule Bindepot.Core.Repositories do
       end
     else
       {:error, :not_found} -> {:error, :not_found}
+    end
+  end
+
+  def get_repository!(id_or_name, opts \\ []) when is_binary(id_or_name) do
+    case get_repository(id_or_name, opts) do
+      {:ok, repo} -> repo
+      {:error, :not_found} -> raise("not found")
+      _ -> raise("undefined error")
     end
   end
 
