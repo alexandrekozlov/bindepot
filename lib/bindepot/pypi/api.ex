@@ -66,7 +66,7 @@ defmodule Bindepot.PyPI.API do
     - Enumerable/Stream (chunks of binaries)
   """
   def upload(repo_id, metadata, source) when is_binary(repo_id) and is_map(metadata) do
-    with {:ok, repo} <- CoreRepos.get_repository(repo_id),
+    with {:ok, repo} <- CoreRepos.get(repo_id),
          :ok <- ensure_not_deleted(repo),
          :ok <- validate_repo_config(repo) do
       simple_path = repo.configuration["simple_index_path"] || "simple"

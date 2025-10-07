@@ -30,7 +30,7 @@ defmodule BindepotWeb.ItemLive.Index do
     {:noreply, assign(socket, show_form: true)}
   end
 
-  def 76("cancel", _payload, socket) do
+  def handle_event("cancel", _payload, socket) do
     {:noreply, assign(socket, show_form: false)}
   end
 
@@ -49,7 +49,7 @@ defmodule BindepotWeb.ItemLive.Index do
 
   # --- Helpers that call your context but stay tolerant if functions are missing ---
   defp safe_list_items do
-    Bindepot.Core.Repositories.list_repositories()
+    Bindepot.Core.Repositories.all()
   end
 
   defp safe_create_item(params) do
@@ -63,7 +63,7 @@ defmodule BindepotWeb.ItemLive.Index do
       end)
 
     IO.inspect(params)
-    {:ok, repo} = Bindepot.Core.Repositories.create_repository(params)
+    {:ok, repo} = Bindepot.Core.Repositories.create(params)
     {:ok, Map.put(params, "id", repo.id)}
   end
 end

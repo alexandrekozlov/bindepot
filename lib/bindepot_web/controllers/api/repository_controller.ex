@@ -8,7 +8,7 @@ defmodule BindepotWeb.Api.RepositoryController do
     package_type = Map.get(params, "package_type", "generic")
 
     {:ok, id} =
-      Repositories.create_repository(%{
+      Repositories.create(%{
         name: repository_name,
         repository_type: repository_type,
         package_type: package_type,

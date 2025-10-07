@@ -2,7 +2,7 @@ defmodule Bindepot.Generic.API do
   alias Bindepot.Core.Repositories
 
   def upload(repo_id, _metadata, _stream) do
-    with {:ok, repo} <- Repositories.get_repository(repo_id),
+    with {:ok, repo} <- Repositories.get(repo_id),
          :ok <- ensure_not_deleted(repo),
          :ok <- validate_repo_config(repo),
          :ok <- store().create_repo_dir(repo.id) do

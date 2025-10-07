@@ -6,6 +6,18 @@
 
   <.form for={@form} id="repository-form" phx-change="validate" phx-submit="save">
     <.input field={@form[:name]} type="text" label="Name" />
+    <.input field={@form[:repository_type]} type="select" label="Type"
+      prompt="Select repository type"
+      options={@repository_types}
+    />
+    <.input field={@form[:package_type]} type="select" label="Package"
+      prompt="Select package type"
+      options={@package_types}
+    />
+    <.inputs_for :let={config} field={@form[:configuration]} >
+      <.input field={config[:url]} type="text" label="Remote URL" />
+      <.input field={config[:repositories]} type="text" label="Repositories" />
+    </.inputs_for>
     <footer>
       <.button phx-disable-with="Saving..." variant="primary">Save Repository</.button>
       <.button navigate={return_path(@return_to, @repository)}>Cancel</.button>

@@ -1,7 +1,7 @@
 defmodule BindepotWeb.RepositoryLive.Show do
   use BindepotWeb, :live_view
 
-  alias Bindepot.Repositories
+  alias Bindepot.Core.Repositories
 
   @impl true
   def render(assigns) do
@@ -11,10 +11,10 @@ defmodule BindepotWeb.RepositoryLive.Show do
         Repository {@repository.id}
         <:subtitle>This is a repository record from your database.</:subtitle>
         <:actions>
-          <.button navigate={~p"/repositories"}>
+          <.button navigate={~p"/ui/repositories"}>
             <.icon name="hero-arrow-left" />
           </.button>
-          <.button variant="primary" navigate={~p"/repositories/#{@repository}/edit?return_to=show"}>
+          <.button variant="primary" navigate={~p"/ui/repositories/#{@repository}/edit?return_to=show"}>
             <.icon name="hero-pencil-square" /> Edit repository
           </.button>
         </:actions>
@@ -32,6 +32,6 @@ defmodule BindepotWeb.RepositoryLive.Show do
     {:ok,
      socket
      |> assign(:page_title, "Show Repository")
-     |> assign(:repository, Repositories.get_repository!(id))}
+     |> assign(:repository, Repositories.get(id))}
   end
 end

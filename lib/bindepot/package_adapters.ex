@@ -8,5 +8,9 @@ defmodule Bindepot.PackageAdapters do
     "r" => Bindepot.R.API
   }
 
+  def package_types() do
+    Map.keys(@adapters)
+  end
+
   def for_type(type) when is_binary(type), do: Map.get(@adapters, String.downcase(type))
 end

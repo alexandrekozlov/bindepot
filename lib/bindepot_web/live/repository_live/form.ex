@@ -2,7 +2,7 @@ defmodule BindepotWeb.RepositoryLive.Form do
   use BindepotWeb, :live_view
 
   alias Bindepot.Core.Repositories
-  alias Bindepot.Core.Repositories.Repository
+  alias Bindepot.Core.Repository
 
   @impl true
   def mount(params, _session, socket) do
@@ -16,12 +16,12 @@ defmodule BindepotWeb.RepositoryLive.Form do
   defp return_to(_), do: "index"
 
   defp apply_action(socket, :edit, %{"id" => id}) do
-    repository = Repositories.get_repository!(id)
+    repository = Repositories.get(id)
 
     socket
     |> assign(:page_title, "Edit Repository")
     |> assign(:repository, repository)
-    |> assign(:form, to_form(Repositories.change_repository(repository)))
+    |> assign(:form, to_form(Repository.change(repository, %{})))
   end
 
   defp apply_action(socket, :new, _params) do
@@ -30,12 +30,14 @@ defmodule BindepotWeb.RepositoryLive.Form do
     socket
     |> assign(:page_title, "New Repository")
     |> assign(:repository, repository)
-    |> assign(:form, to_form(Repositories.change_repository(repository)))
+    |> assign(:form, to_form(Repository.change(repository, %{})))
+    |> assign(:repository_types, Repository.repository_types())
+    |> assign(:package_types, Bindepot.PackageAdapters.package_types())
   end
 
   @impl true
   def handle_event("validate", %{"repository" => repository_params}, socket) do
-    changeset = Repositories.change_repository(socket.assigns.repository, repository_params)
+    changeset = Repository.change(socket.assigns.repository, repository_params)
     {:noreply, assign(socket, form: to_form(changeset, action: :validate))}
   end
 
@@ -44,7 +46,7 @@ defmodule BindepotWeb.RepositoryLive.Form do
   end
 
   defp save_repository(socket, :edit, repository_params) do
-    case Repositories.update_repository(socket.assigns.repository, repository_params) do
+    case Repositories.update(socket.assigns.repository, repository_params) do
       {:ok, repository} ->
         {:noreply,
          socket
@@ -57,7 +59,7 @@ defmodule BindepotWeb.RepositoryLive.Form do
   end
 
   defp save_repository(socket, :new, repository_params) do
-    case Repositories.create_repository(repository_params) do
+    case Repositories.create(repository_params) do
       {:ok, repository} ->
         {:noreply,
          socket
