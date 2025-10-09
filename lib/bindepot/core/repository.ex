@@ -100,15 +100,12 @@ defmodule Bindepot.Core.Repository do
   end
 
   defp validate_configuration(changeset) do
-    case get_field(changeset, :repository_type) do
-      "remote" ->
-        validate_required(changeset, :url)
-
-      "virtual" ->
-        validate_required(changeset, :repositories)
-
-      _ ->
+    cond do
+      remote?(changeset) -> validate_required(changeset, :url)
+      virtual?(changeset) -> validate_required(changeset, :repositories)
+      true ->
         changeset
     end
   end
+
 end
