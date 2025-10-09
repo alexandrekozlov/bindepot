@@ -17,9 +17,11 @@ defmodule Bindepot.Core.Repositories do
 
     ## Options
       * `:include_deleted` - also include soft-deleted repositories.
+      * `:package_type` - include only specific package type
   """
   def all(options \\ []) do
     include_deleted = Keyword.get(options, :include_deleted, false)
+    package_type = Keyword.get(options, :package_type, nil)
 
     base =
       from r in Repository,
@@ -32,7 +34,14 @@ defmodule Bindepot.Core.Repositories do
         from r in base, where: is_nil(r.deleted_at)
       end
 
-    Repo.all(query)
+    filter =
+      if is_nil(package_type) do
+        query
+      else
+        from r in query, where: r.package_type == ^package_type
+      end
+
+    Repo.all(filter)
   end
 
   def deleted() do
@@ -76,9 +85,9 @@ defmodule Bindepot.Core.Repositories do
     end
   end
 
-  def update(repo, params) do
+  def change(repo, params) do
     repo
-    |> Repository.change(params)
+    |> Repository.change(:edit, params)
     |> Repo.update()
   end
 
@@ -94,9 +103,10 @@ defmodule Bindepot.Core.Repositories do
     end
   end
 
-  def purge(%Repository{ id: id } = repository, opts \\ []) do
+  def purge(%Repository{ id: id }, opts \\ []) do
     require_soft_deleted = Keyword.get(opts, :require_soft_deleted, true)
 
+    # FIXME: It is a mess here, clean up and prettify.
     case get(id, allow_deleted: true) do
       repository ->
         if require_soft_deleted and is_nil(repository.deleted_at) do
@@ -106,7 +116,7 @@ defmodule Bindepot.Core.Repositories do
           case store().delete_repo_dir(repository.id) do
             :ok ->
               # Step 2: remove DB rows in transaction (cascades will clear package rows)
-              case Repo.delete!(repository) do
+              case Repo.delete(repository) do
                 {:ok, %{} = _} ->
                   {:ok, :deleted}
 
@@ -127,7 +137,7 @@ defmodule Bindepot.Core.Repositories do
                   {:error, {:unexpected, other}}
               end
 
-            {:error, reason} ->
+            {:error, reason, _file} ->
               Logger.error(
                 "Failed to remove repo dir for hard-delete #{repository.id}: #{Kernel.inspect(reason)}"
               )

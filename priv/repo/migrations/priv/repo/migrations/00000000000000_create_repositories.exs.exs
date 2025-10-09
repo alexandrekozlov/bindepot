@@ -7,8 +7,8 @@ defmodule Bindepot.Repo.Migrations.CreateRepositories do
       add :name, :string, null: false
       add :repository_type, :string, null: false
       add :package_type, :string, null: false
-      add :configuration, :map, default: %{}, null: false
-      add :properties, :map, default: %{}, null: false
+      add :url, :string, null: true
+      add :repositories, {:array, :string}, default: [], null: false
 
       add :inserted_at, :naive_datetime_usec, null: false
       add :updated_at, :naive_datetime_usec, null: false

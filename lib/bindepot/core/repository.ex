@@ -1,4 +1,5 @@
 defmodule Bindepot.Core.Repository do
+  alias Ecto.Changeset
   alias Bindepot.Core.Repository
   alias Bindepot.Core.Repositories
   use Ecto.Schema
@@ -10,7 +11,8 @@ defmodule Bindepot.Core.Repository do
     field :name, :string
     field :repository_type, :string
     field :package_type, :string
-    field :configuration, :map, default: %{}
+    field :url, :string
+    field :repositories, {:array, :string}
 
     timestamps()
     field :deleted_at, :naive_datetime
@@ -25,7 +27,8 @@ defmodule Bindepot.Core.Repository do
       :name,
       :repository_type,
       :package_type,
-      :configuration,
+      :url,
+      :repositories,
       :deleted_at
     ])
     |> validate_required([:name, :repository_type, :package_type])
@@ -34,13 +37,32 @@ defmodule Bindepot.Core.Repository do
     |> unique_constraint(:name)
   end
 
+  def change(struct, :new, params) do
+    struct
+    |> cast(params, ~W(name repository_type package_type url repositories)a)
+    |> validate_format(:name, ~r/\S+/)
+    |> validate_inclusion(:repository_type, @repo_types)
+  end
+
+  def change(struct, :edit, params) do
+    struct
+    |> cast(params, ~W(name url repositories)a)
+    |> validate_required([:name])
+    |> validate_configuration()
+  end
+
   def repository_types() do
     Enum.to_list(@repo_types)
   end
 
+  def new(struct = %Repository{}, params) do
+    struct
+    |> cast(params, [:name, :repository_type, :package_type, :url, :repositories])
+  end
+
   def change(struct = %Repository{}, params) do
     struct
-    |> cast(params, [:name, :configuration])
+    |> cast(params, [:name, :url, :repositories])
     |> unique_constraint(:name)
     |> validate_configuration()
   end
@@ -51,35 +73,42 @@ defmodule Bindepot.Core.Repository do
     |> validate_required([:id])
   end
 
+  def is_repository_type(%Changeset{} = changeset, repository_type)
+      when is_atom(repository_type) do
+    case get_field(changeset, :repository_type) do
+      type when is_atom(type) ->
+        type == repository_type
+
+      type when is_binary(type) ->
+        type == to_string(repository_type)
+
+      _ ->
+        false
+    end
+  end
+
+  def remote?(repo) do
+    repo |> change() |> is_repository_type(:remote)
+  end
+
+  def virtual?(repo) do
+    repo |> change() |> is_repository_type(:virtual)
+  end
+
   def deleted() do
     from(p in Repository, where: not is_nil(p.deleted_at))
   end
 
   defp validate_configuration(changeset) do
     case get_field(changeset, :repository_type) do
-      "remote" -> validate_remote_repository_configuration(changeset)
-      "virtual" -> validate_virtual_repository_configuration(changeset)
-      _ -> changeset
-    end
-  end
+      "remote" ->
+        validate_required(changeset, :url)
 
-  defp validate_remote_repository_configuration(changeset) do
-    config = get_field(changeset, :configuration) || %{}
+      "virtual" ->
+        validate_required(changeset, :repositories)
 
-    case Map.get(config, "url") do
-      url when is_binary(url) -> changeset
-      _ -> add_error(changeset, :configuration, "'url' is not a string")
-      nil -> add_error(changeset, :configuration, "missing `url` key")
-    end
-  end
-
-  defp validate_virtual_repository_configuration(changeset) do
-    config = get_field(changeset, :configuration) || %{}
-
-    case Map.get(config, "repositories") do
-      repo_list when is_list(repo_list) -> changeset
-      _ -> add_error(changeset, :configuration, "`repositories` is not a list")
-      nil -> add_error(changeset, :configuration, "missing `repositories` key")
+      _ ->
+        changeset
     end
   end
 end

@@ -15,16 +15,27 @@ defmodule BindepotWeb.RepositoryLive.Index do
   @impl true
   def handle_event("delete", %{"id" => id}, socket) do
     repository = Repositories.get(id)
-    {:ok, _} = Repositories.delete(repository)
+    {:ok, deleted_repository} = Repositories.delete(repository)
 
-    {:noreply, stream_delete(socket, :repositories, repository)}
+    socket =
+      socket
+      |> stream_delete(:repositories, repository)
+      |> stream_insert(:deleted_repositories, deleted_repository)
+
+    {:noreply, socket}
   end
 
   @impl true
   def handle_event("purge", %{"id" => id}, socket) do
     repository = Repositories.get(id, allow_deleted: true)
-    {:ok, _} = Repositories.purge(repository)
-    {:noreply, stream_delete(socket, :deleted_repositories, repository)}
+
+    case Repositories.purge(repository) do
+      {:ok, _} ->
+        {:noreply, stream_delete(socket, :deleted_repositories, repository)}
+
+      _ ->
+        {:noreply, socket}
+    end
   end
 
   defp list_repositories() do
