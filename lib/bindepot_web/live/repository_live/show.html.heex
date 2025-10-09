@@ -1,0 +1,30 @@
+<Layouts.app flash={@flash}>
+  <.header>
+    Repository {@repository.name}
+    <:subtitle>This is a repository record from your database.</:subtitle>
+    <:actions>
+      <.button navigate={~p"/ui/repositories"}>
+        <.icon name="hero-arrow-left" />
+      </.button>
+      <.button
+        variant="primary"
+        navigate={~p"/ui/repositories/#{@repository}/edit?return_to=show"}
+      >
+        <.icon name="hero-pencil-square" /> Edit repository
+      </.button>
+    </:actions>
+  </.header>
+
+  <.list>
+    <:item title="Name">{@repository.name}</:item>
+    <:item title="ID">{@repository.id}</:item>
+    <:item title="URL">{@repository.url}</:item>
+    <:item title="Includes" >
+        <.table rows={@subrepos} id="subrepos">
+            <:col :let={repository} label="Name">{repository.name}</:col>
+            <:col :let={repository} label="Type">{repository.repository_type}</:col>
+            <:col :let={repository} label="ID">{repository.id}</:col>
+        </.table>
+    </:item>
+  </.list>
+</Layouts.app>

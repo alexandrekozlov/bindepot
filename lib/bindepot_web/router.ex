@@ -22,7 +22,7 @@ defmodule BindepotWeb.Router do
     scope "/ui" do
       live "/repositories", RepositoryLive.Index, :index
       live "/repositories/new", RepositoryLive.Form, :new
-      live "/repositories/:repository", RepositoryLive.Form, :show
+      live "/repositories/:id", RepositoryLive.Show, :show
       live "/repositories/:id/edit", RepositoryLive.Form, :edit
     end
   end

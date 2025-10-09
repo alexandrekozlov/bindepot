@@ -1,7 +1,7 @@
 defmodule Bindepot.Core.Repository do
   alias Ecto.Changeset
   alias Bindepot.Core.Repository
-  alias Bindepot.Core.Repositories
+
   use Ecto.Schema
   import Ecto.Query
   import Ecto.Changeset
