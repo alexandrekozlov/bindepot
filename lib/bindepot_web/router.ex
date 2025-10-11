@@ -24,15 +24,24 @@ defmodule BindepotWeb.Router do
       live "/repositories/new", RepositoryLive.Form, :new
       live "/repositories/:id", RepositoryLive.Show, :show
       live "/repositories/:id/edit", RepositoryLive.Form, :edit
+      live "/repositories/:id/upload", RepositoryLive.Upload, :upload
     end
   end
 
   scope "/bindepot", BindepotWeb do
     pipe_through :api
 
+    # scope "/repositories" do
+    #   get "/:name/*path", RepositoryController, :download
+    # end
+
     scope "/api", Api do
-      put "/repositories/:repository", RepositoryController, :create_repository
-      delete "/repositories/:repository", RepositoryController, :delete_repository
+      get "/repositories", RepositoryController, :list_repositories
+      put "/repositories/:name", RepositoryController, :create_repository
+      # FIXME: should be :name
+      delete "/repositories/:id", RepositoryController, :delete_repository
+
+      put "/repositories/:name/*path", RepositoryController, :upload
 
       # scope "/pypi" do
       #   get "/:repository/simple/", PypiController, :simple_index

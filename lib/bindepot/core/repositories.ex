@@ -79,9 +79,18 @@ defmodule Bindepot.Core.Repositories do
   def create(params) do
     changeset = Repository.changeset(%Repository{}, params)
 
-    with {:ok, repository} = Repo.insert(changeset),
-         :ok = store().create_repo_dir(repository.id) do
-      {:ok, repository}
+    case Repo.insert(changeset) do
+      {:ok, repository} ->
+        case store().create_repo_dir(repository.id) do
+          :ok ->
+            {:ok, repository}
+
+          {:error, reason} ->
+            {:error, reason}
+        end
+
+      {:error, changeset} ->
+        {:error, changeset}
     end
   end
 
@@ -91,7 +100,7 @@ defmodule Bindepot.Core.Repositories do
     |> Repo.update()
   end
 
-  def delete(%Repository{ id: id } = repository) do
+  def delete(%Repository{id: id} = repository) do
     Logger.info("Deleting repository '#{repository.name}'")
 
     with repo <- get(id) do
@@ -103,7 +112,7 @@ defmodule Bindepot.Core.Repositories do
     end
   end
 
-  def purge(%Repository{ id: id }, opts \\ []) do
+  def purge(%Repository{id: id}, opts \\ []) do
     require_soft_deleted = Keyword.get(opts, :require_soft_deleted, true)
 
     # FIXME: It is a mess here, clean up and prettify.
