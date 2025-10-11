@@ -1,18 +1,23 @@
 defmodule Bindepot.Core.Repository do
   alias Ecto.Changeset
   alias Bindepot.Core.Repository
+  alias Bindepot.Core.Artifact
 
   use Ecto.Schema
   import Ecto.Query
   import Ecto.Changeset
 
   @primary_key {:id, :binary_id, autogenerate: true}
+  @foreign_key_type :binary_id
+
   schema "repositories" do
     field :name, :string
     field :repository_type, :string
     field :package_type, :string
     field :url, :string
     field :repositories, {:array, :string}
+
+    has_many :artifact, Artifact
 
     timestamps()
     field :deleted_at, :naive_datetime
@@ -101,11 +106,14 @@ defmodule Bindepot.Core.Repository do
 
   defp validate_configuration(changeset) do
     cond do
-      remote?(changeset) -> validate_required(changeset, :url)
-      virtual?(changeset) -> validate_required(changeset, :repositories)
+      remote?(changeset) ->
+        validate_required(changeset, :url)
+
+      virtual?(changeset) ->
+        validate_required(changeset, :repositories)
+
       true ->
         changeset
     end
   end
-
 end

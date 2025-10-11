@@ -1,7 +1,6 @@
 defmodule BindepotWeb.RepositoryLive.Upload do
   use BindepotWeb, :live_view
 
-  import Ecto.Query
   alias Bindepot.Core.Repositories
 
   @impl true

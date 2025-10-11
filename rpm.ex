@@ -166,7 +166,10 @@ defmodule Bindepot.Repository.Controllers.RpmController do
         conn
         |> put_status(400)
         |> put_resp_content_type("application/json")
-        |> send_resp(400, Jason.encode!(%{ok: false, error: "no file field 'package' or 'file' found"}))
+        |> send_resp(
+          400,
+          Jason.encode!(%{ok: false, error: "no file field 'package' or 'file' found"})
+        )
     end
   end
 
@@ -198,7 +201,13 @@ defmodule Bindepot.Repository.Controllers.RpmController do
         conn
         |> put_status(413)
         |> put_resp_content_type("application/json")
-        |> send_resp(413, Jason.encode!(%{ok: false, error: "payload too large or streaming not supported in mock"}))
+        |> send_resp(
+          413,
+          Jason.encode!(%{
+            ok: false,
+            error: "payload too large or streaming not supported in mock"
+          })
+        )
 
       {:error, reason} ->
         conn
@@ -215,9 +224,15 @@ defmodule Bindepot.Repository.Controllers.RpmController do
   defp build_fake_rpm(name, version, arch) do
     [
       "RPM-MOCK\n",
-      "Name: ", name, "\n",
-      "Version: ", version, "\n",
-      "Arch: ", arch, "\n",
+      "Name: ",
+      name,
+      "\n",
+      "Version: ",
+      version,
+      "\n",
+      "Arch: ",
+      arch,
+      "\n",
       @fake_rpm_content
     ]
     |> IO.iodata_to_binary()

@@ -8,5 +8,6 @@ defmodule Bindepot.Storage.Store do
   @callback repo_path(binary_id :: String.t()) :: String.t()
   @callback create_repo_dir(binary_id :: String.t()) :: :ok | {:error, any()}
   @callback delete_repo_dir(binary_id :: String.t()) :: :ok | {:error, any()}
-  @callback upload_temp_to_final(temp_path :: String.t(), final_path :: String.t()) :: :ok | {:error, any()}
+  @callback upload_temp_to_final(temp_path :: String.t(), final_path :: String.t()) ::
+              :ok | {:error, any()}
 end

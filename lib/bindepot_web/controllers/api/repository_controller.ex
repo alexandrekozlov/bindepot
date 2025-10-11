@@ -1,7 +1,6 @@
 defmodule BindepotWeb.Api.RepositoryController do
   use BindepotWeb, :controller
 
-  alias Bindepot.Repo
   alias Bindepot.Core.Repositories
   alias Bindepot.Core.Repository
 
@@ -81,11 +80,11 @@ defmodule BindepotWeb.Api.RepositoryController do
     |> send_resp(resp.id, Jason.encode!(resp, pretty: true))
   end
 
-  def upload(conn, %{"name" => name, "path" => path} = params) do
+  def upload(conn, %{"name" => name, "path" => path} = _params) do
     repo = Repositories.get_by_name(name)
     repo_path = store().repo_path(repo.id)
     rel_path = Path.join(path)
-    { :ok, rel_artifact_path } = Path.safe_relative(rel_path, repo_path)
+    {:ok, rel_artifact_path} = Path.safe_relative(rel_path, repo_path)
     artifact_path = Path.join(repo_path, rel_artifact_path)
     IO.inspect(artifact_path)
 
@@ -140,7 +139,7 @@ defmodule BindepotWeb.Api.RepositoryController do
   end
 
   defp extract_errors(%Ecto.Changeset{} = changeset) do
-    Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->
+    Ecto.Changeset.traverse_errors(changeset, fn {msg, _opts} ->
       msg
     end)
   end

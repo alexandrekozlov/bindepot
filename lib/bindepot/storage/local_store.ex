@@ -17,6 +17,7 @@ defmodule Bindepot.Storage.LocalStore do
 
   def create_repo_dir(id) when is_binary(id) do
     dir = repo_path(id)
+
     case File.mkdir_p(dir) do
       :ok -> :ok
       {:error, reason} -> {:error, reason}
@@ -25,6 +26,7 @@ defmodule Bindepot.Storage.LocalStore do
 
   def delete_repo_dir(id) when is_binary(id) do
     dir = repo_path(id)
+
     case File.rm_rf(dir) do
       {:ok, _} -> :ok
       {:error, reason, file} -> {:error, reason, file}
@@ -36,12 +38,18 @@ defmodule Bindepot.Storage.LocalStore do
   """
   def upload_temp_to_final(temp_path, final_path) do
     case File.rename(temp_path, final_path) do
-      :ok -> :ok
+      :ok ->
+        :ok
+
       {:error, _} = err ->
         # attempt copy+delete as fallback
         case File.cp(temp_path, final_path) do
-          :ok -> File.rm(temp_path); :ok
-          {:error, _reason} -> err
+          :ok ->
+            File.rm(temp_path)
+            :ok
+
+          {:error, _reason} ->
+            err
         end
     end
   end

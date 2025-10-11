@@ -9,6 +9,7 @@ defmodule Bindepot.Core.Repositories do
 
   alias Bindepot.Repo
   alias Bindepot.Core.Repository
+  alias Bindepot.Core.Artifact
 
   require Logger
 
@@ -183,6 +184,13 @@ defmodule Bindepot.Core.Repositories do
       nil ->
         {:error, :not_found}
     end
+  end
+
+  def store_artifact(%Repository{} = repo, path) do
+
+    changeset = Artifact.changeset(%Artifact{}, %{ name: path, path: path})
+    Repo.insert(changeset)
+
   end
 
   defp get_query(options) do

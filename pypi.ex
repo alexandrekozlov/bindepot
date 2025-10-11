@@ -57,10 +57,9 @@ defmodule Bindepot.Repository.Controllers.PypiController do
 
   """
 
-
   use BindepotWeb, :controller
   alias Bindepot.Repository
-  alias Bindepot.Repository.{Package,Release,DistFile}
+  alias Bindepot.Repository.{Package, Release, DistFile}
 
   # Content negotiation helpers and auth similar to previous mock implementation
   defp allowed_tokens do
@@ -75,7 +74,9 @@ defmodule Bindepot.Repository.Controllers.PypiController do
 
   defp extract_token_from_conn(conn) do
     case get_req_header(conn, "authorization") do
-      ["Bearer " <> token] -> token
+      ["Bearer " <> token] ->
+        token
+
       [basic] ->
         case String.split(basic, " ", parts: 2) do
           ["Basic", b64] ->
@@ -85,17 +86,24 @@ defmodule Bindepot.Repository.Controllers.PypiController do
                   [_user, pass] -> pass
                   _ -> nil
                 end
-              _ -> nil
+
+              _ ->
+                nil
             end
-          _ -> nil
+
+          _ ->
+            nil
         end
-      _ -> nil
+
+      _ ->
+        nil
     end
   end
 
   defp valid_token?(token) when is_binary(token) do
     Enum.any?(allowed_tokens(), fn t -> Plug.Crypto.secure_compare(t, token) end)
   end
+
   defp valid_token?(_), do: false
 
   defp require_auth!(conn) do
@@ -136,8 +144,16 @@ defmodule Bindepot.Repository.Controllers.PypiController do
       conn |> put_resp_content_type(json_content_type()) |> send_resp(200, body)
     else
       projects = Repository.list_package_names()
-      body = Enum.map(projects, fn name -> "<a href=\"/pypi/simple/#{URI.encode_www_form(name)}/\">#{name}</a><br/>" end) |> Enum.join("\n")
-      conn |> put_resp_content_type("text/html") |> send_resp(200, "<html><body>\n" <> body <> "\n</body></html>")
+
+      body =
+        Enum.map(projects, fn name ->
+          "<a href=\"/pypi/simple/#{URI.encode_www_form(name)}/\">#{name}</a><br/>"
+        end)
+        |> Enum.join("\n")
+
+      conn
+      |> put_resp_content_type("text/html")
+      |> send_resp(200, "<html><body>\n" <> body <> "\n</body></html>")
     end
   end
 
@@ -149,12 +165,21 @@ defmodule Bindepot.Repository.Controllers.PypiController do
   defp do_project_index(conn, name) do
     if wants_pep691_json?(conn) do
       case Repository.build_project_json(name) do
-        nil -> conn |> put_resp_content_type(json_content_type()) |> send_resp(404, Jason.encode!(%{"error" => "not found"}))
-        json -> conn |> put_resp_content_type(json_content_type()) |> send_resp(200, Jason.encode!(json))
+        nil ->
+          conn
+          |> put_resp_content_type(json_content_type())
+          |> send_resp(404, Jason.encode!(%{"error" => "not found"}))
+
+        json ->
+          conn
+          |> put_resp_content_type(json_content_type())
+          |> send_resp(200, Jason.encode!(json))
       end
     else
       case Repository.get_project_with_releases(name) do
-        nil -> send_resp(conn, 404, "Project not found")
+        nil ->
+          send_resp(conn, 404, "Project not found")
+
         %{package: pkg, releases: releases} ->
           html =
             releases
@@ -181,12 +206,17 @@ defmodule Bindepot.Repository.Controllers.PypiController do
   def serve_package(conn, %{"project" => project, "version" => version, "filename" => filename}) do
     # In this example we redirect to storage URL if present or stream a mock
     case Repository.get_distribution_file(project, version, filename) do
-      nil -> send_resp(conn, 404, "Not found")
-      %{url: url} when is_binary(url) and String.starts_with?(url, "http") -> redirect(conn, external: url)
+      nil ->
+        send_resp(conn, 404, "Not found")
+
+      %{url: url} when is_binary(url) and String.starts_with?(url, "http") ->
+        redirect(conn, external: url)
+
       %{path: path} when is_binary(path) and File.exists?(path) ->
         conn
         |> put_resp_header("content-disposition", "attachment; filename=\"#{filename}\"")
         |> send_file(200, path)
+
       _ ->
         conn
         |> put_resp_header("content-disposition", "attachment; filename=\"#{filename}\"")
@@ -209,10 +239,19 @@ defmodule Bindepot.Repository.Controllers.PypiController do
       {:ok, _conn} ->
         # use Repository.create_upload/2 to save uploaded file and metadata
         case Repository.handle_legacy_upload(params) do
-          {:ok, record} -> conn |> put_resp_content_type("application/json") |> send_resp(200, Jason.encode!(%{ok: true, id: record.id}))
-          {:error, reason} -> conn |> put_resp_content_type("application/json") |> send_resp(400, Jason.encode!(%{error: inspect(reason)}))
+          {:ok, record} ->
+            conn
+            |> put_resp_content_type("application/json")
+            |> send_resp(200, Jason.encode!(%{ok: true, id: record.id}))
+
+          {:error, reason} ->
+            conn
+            |> put_resp_content_type("application/json")
+            |> send_resp(400, Jason.encode!(%{error: inspect(reason)}))
         end
-      _ -> conn
+
+      _ ->
+        conn
     end
   end
 
@@ -230,7 +269,9 @@ defmodule Bindepot.Repository.Controllers.PypiController do
           end
 
         conn |> put_resp_content_type("text/xml") |> send_resp(200, response_xml)
-      _ -> conn
+
+      _ ->
+        conn
     end
   end
 
@@ -255,6 +296,7 @@ defmodule Bindepot.Repository.Controllers.PypiController do
 
   defp xmlrpc_response(list) when is_list(list) do
     items = Enum.map(list, fn v -> "<value><string>#{v}</string></value>" end) |> Enum.join("\n")
+
     """
     <?xml version="1.0"?>
     <methodResponse>
@@ -357,16 +399,22 @@ defmodule Bindepot.Repository do
 
   def get_project_with_releases(name) do
     case Repo.get_by(Package, name: name) do
-      nil -> nil
+      nil ->
+        nil
+
       pkg ->
-        releases = Repo.all(from r in Release, where: r.package_id == ^pkg.id, preload: [:dist_files])
+        releases =
+          Repo.all(from r in Release, where: r.package_id == ^pkg.id, preload: [:dist_files])
+
         %{package: pkg, releases: releases}
     end
   end
 
   def build_project_json(name) do
     case get_project_with_releases(name) do
-      nil -> nil
+      nil ->
+        nil
+
       %{package: pkg, releases: releases} ->
         %{
           "meta" => %{"name" => pkg.name},
@@ -379,7 +427,9 @@ defmodule Bindepot.Repository do
                   "url" => f.url || "/pypi/packages/#{pkg.name}/#{r.version}/#{f.filename}",
                   "hashes" => f.hashes || %{},
                   "requires-python" => Map.get(r.metadata || %{}, "Requires-Python"),
-                  "dist-info-metadata" => (f.url || "/pypi/packages/#{pkg.name}/#{r.version}/#{f.filename}") <> "/METADATA"
+                  "dist-info-metadata" =>
+                    (f.url || "/pypi/packages/#{pkg.name}/#{r.version}/#{f.filename}") <>
+                      "/METADATA"
                 }
               end)
             end)
@@ -388,23 +438,30 @@ defmodule Bindepot.Repository do
   end
 
   def get_distribution_file(project, version, filename) do
-    query = from f in DistFile,
-      join: r in Release, on: r.id == f.release_id,
-      join: p in Package, on: p.id == r.package_id,
-      where: p.name == ^project and r.version == ^version and f.filename == ^filename,
-      select: f
+    query =
+      from f in DistFile,
+        join: r in Release,
+        on: r.id == f.release_id,
+        join: p in Package,
+        on: p.id == r.package_id,
+        where: p.name == ^project and r.version == ^version and f.filename == ^filename,
+        select: f
 
     Repo.one(query)
   end
 
   def get_release_metadata(project, version) do
-    query = from r in Release,
-      join: p in Package, on: p.id == r.package_id,
-      where: p.name == ^project and r.version == ^version,
-      select: r.metadata
+    query =
+      from r in Release,
+        join: p in Package,
+        on: p.id == r.package_id,
+        where: p.name == ^project and r.version == ^version,
+        select: r.metadata
 
     case Repo.one(query) do
-      nil -> nil
+      nil ->
+        nil
+
       metadata when is_map(metadata) ->
         # produce textual METADATA from map (simple implementation)
         metadata
@@ -420,8 +477,14 @@ defmodule Bindepot.Repository do
     upload = Map.get(params, "content")
 
     Repo.transaction(fn ->
-      pkg = Repo.get_by(Package, name: name) || %Package{} |> Package.changeset(%{name: name}) |> Repo.insert!()
-      rel = %Release{} |> Release.changeset(%{version: version, package_id: pkg.id, metadata: %{}}) |> Repo.insert!()
+      pkg =
+        Repo.get_by(Package, name: name) ||
+          %Package{} |> Package.changeset(%{name: name}) |> Repo.insert!()
+
+      rel =
+        %Release{}
+        |> Release.changeset(%{version: version, package_id: pkg.id, metadata: %{}})
+        |> Repo.insert!()
 
       # handle uploaded file if present
       dist =
@@ -430,9 +493,14 @@ defmodule Bindepot.Repository do
             %DistFile{}
             |> DistFile.changeset(%{filename: fname, path: path, release_id: rel.id})
             |> Repo.insert!()
+
           _ ->
             %DistFile{}
-            |> DistFile.changeset(%{filename: Map.get(params, "filename") || "unknown", url: Map.get(params, "url"), release_id: rel.id})
+            |> DistFile.changeset(%{
+              filename: Map.get(params, "filename") || "unknown",
+              url: Map.get(params, "url"),
+              release_id: rel.id
+            })
             |> Repo.insert!()
         end
 
@@ -538,9 +606,27 @@ defmodule Bindepot.Repository.PypiControllerTest do
     Ecto.Adapters.SQL.Sandbox.mode(Bindepot.Repo, {:shared, self()})
 
     # Insert a package, release and distfile fixture
-    pkg = %Bindepot.Repository.Package{} |> Bindepot.Repository.Package.changeset(%{name: "examplepkg"}) |> Repo.insert!()
-    rel = %Bindepot.Repository.Release{} |> Bindepot.Repository.Release.changeset(%{version: "1.2.0", package_id: pkg.id, metadata: %{"Summary" => "A test pkg"}}) |> Repo.insert!()
-    %Bindepot.Repository.DistFile{} |> Bindepot.Repository.DistFile.changeset(%{filename: "examplepkg-1.2.0-py3-none-any.whl", url: "/pypi/packages/examplepkg/1.2.0/examplepkg-1.2.0-py3-none-any.whl", release_id: rel.id}) |> Repo.insert!()
+    pkg =
+      %Bindepot.Repository.Package{}
+      |> Bindepot.Repository.Package.changeset(%{name: "examplepkg"})
+      |> Repo.insert!()
+
+    rel =
+      %Bindepot.Repository.Release{}
+      |> Bindepot.Repository.Release.changeset(%{
+        version: "1.2.0",
+        package_id: pkg.id,
+        metadata: %{"Summary" => "A test pkg"}
+      })
+      |> Repo.insert!()
+
+    %Bindepot.Repository.DistFile{}
+    |> Bindepot.Repository.DistFile.changeset(%{
+      filename: "examplepkg-1.2.0-py3-none-any.whl",
+      url: "/pypi/packages/examplepkg/1.2.0/examplepkg-1.2.0-py3-none-any.whl",
+      release_id: rel.id
+    })
+    |> Repo.insert!()
 
     {:ok, pkg: pkg, rel: rel}
   end
@@ -552,14 +638,20 @@ defmodule Bindepot.Repository.PypiControllerTest do
 
   test "GET /pypi/simple/?format=json returns PEP691 JSON", %{conn: conn} do
     conn = get(conn, "/pypi/simple/?format=json")
-    assert get_resp_header(conn, "content-type") |> List.first() =~ "application/vnd.pypi.simple.v1+json"
-    assert json_response(conn, 200)["projects"] |> Enum.any?(fn p -> p["name"] == "examplepkg" end)
+
+    assert get_resp_header(conn, "content-type") |> List.first() =~
+             "application/vnd.pypi.simple.v1+json"
+
+    assert json_response(conn, 200)["projects"]
+           |> Enum.any?(fn p -> p["name"] == "examplepkg" end)
   end
 
   test "per-project JSON returns files", %{conn: conn} do
     conn = get(conn, "/pypi/simple/examplepkg/?format=json")
     assert json_response(conn, 200)["meta"]["name"] == "examplepkg"
-    assert json_response(conn, 200)["files"] |> Enum.any?(fn f -> f["filename"] =~ "examplepkg-1.2.0" end)
+
+    assert json_response(conn, 200)["files"]
+           |> Enum.any?(fn f -> f["filename"] =~ "examplepkg-1.2.0" end)
   end
 
   test "serve metadata returns METADATA text", %{conn: conn} do
@@ -573,7 +665,11 @@ defmodule Bindepot.Repository.PypiControllerTest do
     assert conn.status == 401
 
     # with mock token (configured in test.exs to include "mock-token")
-    conn = conn |> put_req_header("authorization", "Bearer mock-token") |> post("/pypi/legacy/", %{"name" => "u1", "version" => "0.1.0"})
+    conn =
+      conn
+      |> put_req_header("authorization", "Bearer mock-token")
+      |> post("/pypi/legacy/", %{"name" => "u1", "version" => "0.1.0"})
+
     assert json_response(conn, 200)["ok"] == true
   end
 end

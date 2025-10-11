@@ -19,5 +19,4 @@ defmodule Bindepot.Generic.API do
   defp ensure_not_deleted(_), do: {:error, :deleted}
 
   defp store, do: Application.get_env(:bindepot, :store, LocalStore)
-
 end
