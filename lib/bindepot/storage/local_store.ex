@@ -1,6 +1,9 @@
 defmodule Bindepot.Storage.LocalStore do
+  defstruct [:id, :store_root_directory]
+
   @behaviour Bindepot.Storage.Store
   require Logger
+  alias Bindepot.Storage.LocalStore
 
   def data_dir do
     Application.fetch_env!(:bindepot, :data_dir)
@@ -52,5 +55,36 @@ defmodule Bindepot.Storage.LocalStore do
             err
         end
     end
+  end
+
+  def from_configuration(config) do
+    %LocalStore{
+      store_root_directory: Map.get(config, "store_root_directory")
+    }
+  end
+
+  def create(%LocalStore{store_root_directory: store_root_directory}) do
+    store_id = UUID.uuid4()
+    File.mkdir_p!(store_root_directory)
+    File.write!(Path.join(store_root_directory, ".id"), store_id)
+    {:ok, %LocalStore{id: store_id, store_root_directory: store_root_directory}}
+  end
+
+  def store(%LocalStore{store_root_directory: store_root_directory}, file_path) do
+    rel_object_path = new_object()
+    full_object_path = Path.join(store_root_directory, rel_object_path)
+    File.mkdir_p!(Path.dirname(full_object_path))
+    File.cp!(file_path, full_object_path)
+    {:ok, rel_object_path}
+  end
+
+  def retrieve(%LocalStore{store_root_directory: store_root_directory}, rel_object_path) do
+    Path.join(store_root_directory, rel_object_path)
+  end
+
+  defp new_object() do
+    id = UUID.uuid4()
+    partition = id |> String.replace("-", "") |> String.slice(0, 2)
+    Path.join(partition, id)
   end
 end

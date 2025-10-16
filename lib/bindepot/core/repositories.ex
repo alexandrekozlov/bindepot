@@ -9,7 +9,8 @@ defmodule Bindepot.Core.Repositories do
 
   alias Bindepot.Repo
   alias Bindepot.Core.Repository
-  alias Bindepot.Core.Artifact
+  alias Bindepot.Core.Asset
+  alias Bindepot.Core.Stores
 
   require Logger
 
@@ -49,8 +50,8 @@ defmodule Bindepot.Core.Repositories do
     Repo.all(Repository.deleted())
   end
 
-  def deleted?(%Repository{} = repository) do
-    repository.deleted_at != nil
+  def deleted?(%Repository{deleted_at: deleted_at}) do
+    deleted_at != nil
   end
 
   @doc """
@@ -79,20 +80,7 @@ defmodule Bindepot.Core.Repositories do
 
   def create(params) do
     changeset = Repository.changeset(%Repository{}, params)
-
-    case Repo.insert(changeset) do
-      {:ok, repository} ->
-        case store().create_repo_dir(repository.id) do
-          :ok ->
-            {:ok, repository}
-
-          {:error, reason} ->
-            {:error, reason}
-        end
-
-      {:error, changeset} ->
-        {:error, changeset}
-    end
+    Repo.insert(changeset)
   end
 
   def change(repo, params) do
@@ -101,16 +89,19 @@ defmodule Bindepot.Core.Repositories do
     |> Repo.update()
   end
 
-  def delete(%Repository{id: id} = repository) do
-    Logger.info("Deleting repository '#{repository.name}'")
+  def delete(repository_or_id, opts \\ [])
 
-    with repo <- get(id) do
-      now = NaiveDateTime.utc_now(:microsecond) |> NaiveDateTime.truncate(:second)
+  def delete(%Repository{} = repository, opts) do
+    now = NaiveDateTime.utc_now(:microsecond) |> NaiveDateTime.truncate(:second)
+    r = if opts[:reload], do: get(repository.id), else: repository
 
-      repo
-      |> Ecto.Changeset.change(deleted_at: now)
-      |> Repo.update()
-    end
+    r
+    |> Ecto.Changeset.change(deleted_at: now)
+    |> Repo.update()
+  end
+
+  def delete(repository_id, opts) do
+    delete(%Repository{id: repository_id}, Keyword.put(opts, :reload, true))
   end
 
   def purge(%Repository{id: id}, opts \\ []) do
@@ -180,17 +171,44 @@ defmodule Bindepot.Core.Repositories do
               end
           end
         end
-
-      nil ->
-        {:error, :not_found}
     end
   end
 
-  def store_artifact(%Repository{} = repo, path) do
+  def assets(q \\ Asset) do
+    assets =
+      Repo.all(q)
+      |> Repo.preload([:repository, :store])
+      |> Enum.map(&ensure_store/1)
 
-    changeset = Artifact.changeset(%Artifact{}, %{ name: path, path: path})
+    assets
+  end
+
+  defp ensure_store(%Asset{store: nil} = asset) do
+    %{asset | store: Bindepot.Core.Stores.default()}
+  end
+
+  defp ensure_store(asset) do
+    asset
+  end
+
+  def store_asset(%Repository{} = repo, name, source_path) do
+    store = Stores.default()
+    {:ok, file} = Stores.store(store, source_path)
+
+    changeset =
+      Asset.changeset(%Asset{}, %{
+        name: name,
+        store_path: file,
+        store: store,
+        repository: repo
+      })
+
     Repo.insert(changeset)
+  end
 
+  def retrieve_asset(%Asset{} = asset) do
+    Repo.preload(asset, [:repository, :store])
+    Stores.retrieve(asset.store, asset.name)
   end
 
   defp get_query(options) do

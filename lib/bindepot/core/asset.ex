@@ -1,16 +1,18 @@
-defmodule Bindepot.Core.Artifact do
-  alias Bindepot.Core.Repository
-
+defmodule Bindepot.Core.Asset do
   import Ecto.Changeset
   use Ecto.Schema
+
+  alias Bindepot.Core.{Repository, Store}
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
 
-  schema "artifacts" do
-    field :name, :string
-    field :path, :string
+  schema "assets" do
+    field :store_path, :string
 
+    field :name, :string
+
+    belongs_to :store, Store
     belongs_to :repository, Repository
 
     timestamps()
@@ -21,11 +23,10 @@ defmodule Bindepot.Core.Artifact do
     struct
     |> cast(params, [
       :id,
+      :store_path,
       :name,
-      :path,
       :accessed_at
     ])
-    |> validate_required([:name, :path])
-    |> unique_constraint(:name)
+    |> validate_required([:name])
   end
 end

@@ -24,6 +24,7 @@ defmodule Bindepot.DataCase do
       import Ecto.Changeset
       import Ecto.Query
       import Bindepot.DataCase
+      import Bindepot.TestHelpers
     end
   end
 

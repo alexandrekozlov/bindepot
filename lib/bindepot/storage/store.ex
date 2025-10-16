@@ -10,4 +10,6 @@ defmodule Bindepot.Storage.Store do
   @callback delete_repo_dir(binary_id :: String.t()) :: :ok | {:error, any()}
   @callback upload_temp_to_final(temp_path :: String.t(), final_path :: String.t()) ::
               :ok | {:error, any()}
+  @callback store(temp_file :: String.t()) ::
+              {:ok, %Bindepot.Storage.LocalStore{}} | {:error, any()}
 end

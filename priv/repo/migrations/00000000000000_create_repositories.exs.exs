@@ -10,8 +10,7 @@ defmodule Bindepot.Repo.Migrations.CreateRepositories do
       add :url, :string, null: true
       add :repositories, {:array, :string}, default: [], null: false
 
-      add :inserted_at, :naive_datetime_usec, null: false
-      add :updated_at, :naive_datetime_usec, null: false
+      timestamps()
       add :deleted_at, :naive_datetime_usec
     end
 
@@ -20,17 +19,18 @@ defmodule Bindepot.Repo.Migrations.CreateRepositories do
     create index(:repositories, [:package_type])
     create index(:repositories, [:deleted_at])
 
-    create table(:artifacts, primary_key: false) do
+    create table(:assets, primary_key: false) do
       add :id, :uuid, primary_key: true, null: false
-      add :name, :string, null: false
+      add :storage_type, :string, null: false
+      add :storage_location, :string, null: false
       add :path, :string, null: false
+      add :name, :string, null: false
 
       add :repository_id,
           :uuid,
           [references(:repositories, type: :uuid, on_delete: :delete_all, on_update: :update_all)]
 
-      add :inserted_at, :naive_datetime_usec, null: false
-      add :updated_at, :naive_datetime_usec, null: false
+      timestamps()
       add :accessed_at, :naive_datetime_usec
     end
 
