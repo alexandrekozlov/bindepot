@@ -2,7 +2,7 @@ defmodule Bindepot.Core.Repositories do
   @moduledoc """
   Repository management: create, soft-delete, get, list.
 
-  Uses a storage backend implementing `Bindepot.Storage.Store` (configurable).
+  Uses a storage backend implementing `Bindepot.Storage.Filestore` (configurable).
   """
 
   import Ecto.Query, warn: false
@@ -10,7 +10,7 @@ defmodule Bindepot.Core.Repositories do
   alias Bindepot.Repo
   alias Bindepot.Core.Repository
   alias Bindepot.Core.Asset
-  alias Bindepot.Core.Stores
+  alias Bindepot.Core.Filestores
 
   require Logger
 
@@ -177,38 +177,42 @@ defmodule Bindepot.Core.Repositories do
   def assets(q \\ Asset) do
     assets =
       Repo.all(q)
-      |> Repo.preload([:repository, :store])
+      |> Repo.preload([:repository, :filestore])
       |> Enum.map(&ensure_store/1)
 
     assets
   end
 
-  defp ensure_store(%Asset{store: nil} = asset) do
-    %{asset | store: Bindepot.Core.Stores.default()}
+  defp ensure_store(%Asset{filestore: nil} = asset) do
+    %{asset | filestore: Bindepot.Core.Filestores.default()}
   end
 
   defp ensure_store(asset) do
     asset
   end
 
-  def store_asset(%Repository{} = repo, name, source_path) do
-    store = Stores.default()
-    {:ok, file} = Stores.store(store, source_path)
+  def put_asset(%Repository{} = repo, name, source_path) do
+    id = UUID.uuid4()
+
+    store = Filestores.default()
+    {:ok, file} = Filestores.store(store, source_path, id)
 
     changeset =
       Asset.changeset(%Asset{}, %{
+        id: id,
         name: name,
         store_path: file,
-        store: store,
-        repository: repo
+      #  filestore_name: nil
       })
+      |> Ecto.Changeset.put_assoc(:filestore, store)
+      |> Ecto.Changeset.put_assoc(:repository, repo)
 
     Repo.insert(changeset)
   end
 
-  def retrieve_asset(%Asset{} = asset) do
-    Repo.preload(asset, [:repository, :store])
-    Stores.retrieve(asset.store, asset.name)
+  def get_asset(%Asset{} = asset) do
+    ass = Repo.preload(asset, [:repository, :filestore])
+    Filestores.retrieve(ass.filestore, ass.store_path)
   end
 
   defp get_query(options) do
@@ -221,5 +225,5 @@ defmodule Bindepot.Core.Repositories do
     end
   end
 
-  defp store, do: Application.get_env(:bindepot, :store, Bindepot.Storage.LocalStore)
+  defp store, do: Application.get_env(:bindepot, :store, Bindepot.Storage.FilesystemStorage)
 end

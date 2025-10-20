@@ -87,4 +87,34 @@ defmodule Bindepot.Core.RepositoryTest do
       assert repository.deleted_at == nil
     end
   end
+
+  describe "put and get asset" do
+    setup do
+      params = %{
+        name: "generic",
+        repository_type: "local",
+        package_type: "generic"
+      }
+
+      {:ok, repository} = Repositories.create(params)
+      %{repository: repository}
+    end
+
+    test "put and get", %{repository: repository} do
+      assert {:ok, asset} =
+               Repositories.put_asset(
+                 repository,
+                 "asset.bin",
+                 Path.expand("./test/data/artifact.txt")
+               )
+
+      assert asset.id != nil
+      assert asset.name == "asset.bin"
+      assert asset.store_path != nil
+      assert asset.filestore != nil
+
+      assert {:ok, result} = Repositories.get_asset(asset)
+      assert File.exists?(result)
+    end
+  end
 end

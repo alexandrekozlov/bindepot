@@ -6,7 +6,7 @@ defmodule Bindepot.Generic.API do
          :ok <- ensure_not_deleted(repo),
          :ok <- validate_repo_config(repo),
          :ok <- store().create_repo_dir(repo.id) do
-      # layout: Path.join(Store.repo_path(repo.id), repo.configuration["simple_index_path"], metadata["name"])
+      # layout: Path.join(Filestore.repo_path(repo.id), repo.configuration["simple_index_path"], metadata["name"])
       # write file, insert metadata row, return result
     end
   end
@@ -18,5 +18,5 @@ defmodule Bindepot.Generic.API do
   defp ensure_not_deleted(%{deleted_at: nil}), do: :ok
   defp ensure_not_deleted(_), do: {:error, :deleted}
 
-  defp store, do: Application.get_env(:bindepot, :store, LocalStore)
+  defp store, do: Application.get_env(:bindepot, :store, FilesystemStorage)
 end

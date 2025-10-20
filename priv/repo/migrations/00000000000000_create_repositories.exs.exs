@@ -19,22 +19,28 @@ defmodule Bindepot.Repo.Migrations.CreateRepositories do
     create index(:repositories, [:package_type])
     create index(:repositories, [:deleted_at])
 
+    create table(:filestores, primary_key: false) do
+      add :name, :string, primary_key: true, null: false
+      add :provider, :string, null: false
+      add :configuration, :map, default: %{}, null: false
+    end
+
     create table(:assets, primary_key: false) do
       add :id, :uuid, primary_key: true, null: false
-      add :storage_type, :string, null: false
-      add :storage_location, :string, null: false
-      add :path, :string, null: false
+      add :store_path, :string, null: false
       add :name, :string, null: false
 
+      add :filestore_name,
+          references(:filestores, column: :name, type: :string, on_delete: :nothing, on_update: :update_all)
+
       add :repository_id,
-          :uuid,
-          [references(:repositories, type: :uuid, on_delete: :delete_all, on_update: :update_all)]
+          references(:repositories, column: :id, type: :uuid, on_delete: :delete_all, on_update: :update_all)
 
       timestamps()
       add :accessed_at, :naive_datetime_usec
     end
 
-    create unique_index(:artifacts, :name)
+    create unique_index(:assets, :name)
 
     # PyPI
     create table(:pypi_packages, primary_key: false) do

@@ -64,7 +64,8 @@ defmodule Bindepot.MixProject do
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
-      {:uuid, "~> 1.1"}
+      {:uuid, "~> 1.1"},
+      {:temp, "~> 0.4.9"}
     ]
   end
 

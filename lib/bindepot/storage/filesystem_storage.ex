@@ -1,9 +1,9 @@
-defmodule Bindepot.Storage.LocalStore do
+defmodule Bindepot.Storage.FilesystemStorage do
   defstruct [:id, :store_root_directory]
 
-  @behaviour Bindepot.Storage.Store
+  @behaviour Bindepot.Storage.StorageAdapter
   require Logger
-  alias Bindepot.Storage.LocalStore
+  alias Bindepot.Storage.FilesystemStorage
 
   def data_dir do
     Application.fetch_env!(:bindepot, :data_dir)
@@ -58,33 +58,46 @@ defmodule Bindepot.Storage.LocalStore do
   end
 
   def from_configuration(config) do
-    %LocalStore{
-      store_root_directory: Map.get(config, "store_root_directory")
+    %FilesystemStorage{
+      store_root_directory: Map.fetch!(config, :store_root_directory)
     }
   end
 
-  def create(%LocalStore{store_root_directory: store_root_directory}) do
+  def create(%FilesystemStorage{store_root_directory: store_root_directory}) do
     store_id = UUID.uuid4()
     File.mkdir_p!(store_root_directory)
     File.write!(Path.join(store_root_directory, ".id"), store_id)
-    {:ok, %LocalStore{id: store_id, store_root_directory: store_root_directory}}
+    {:ok, %FilesystemStorage{id: store_id, store_root_directory: store_root_directory}}
   end
 
-  def store(%LocalStore{store_root_directory: store_root_directory}, file_path) do
-    rel_object_path = new_object()
+  @impl Bindepot.Storage.StorageAdapter
+  def put(
+        %FilesystemStorage{store_root_directory: store_root_directory},
+        file_path,
+        id \\ UUID.uuid4()
+      ) do
+    rel_object_path = new_object(id)
     full_object_path = Path.join(store_root_directory, rel_object_path)
     File.mkdir_p!(Path.dirname(full_object_path))
     File.cp!(file_path, full_object_path)
     {:ok, rel_object_path}
   end
 
-  def retrieve(%LocalStore{store_root_directory: store_root_directory}, rel_object_path) do
-    Path.join(store_root_directory, rel_object_path)
+  @impl Bindepot.Storage.StorageAdapter
+  def get(%FilesystemStorage{store_root_directory: store_root_directory}, rel_object_path) do
+    full_path = Path.join(store_root_directory, rel_object_path)
+
+    if File.exists?(full_path) do
+      {:ok, full_path}
+    else
+      {:error, "file not found"}
+    end
   end
 
-  defp new_object() do
-    id = UUID.uuid4()
-    partition = id |> String.replace("-", "") |> String.slice(0, 2)
-    Path.join(partition, id)
+  def new_object(id) do
+    case id |> String.replace("-", "") |> String.slice(0, 2) do
+      "" -> id
+      partition -> Path.join(partition, id)
+    end
   end
 end

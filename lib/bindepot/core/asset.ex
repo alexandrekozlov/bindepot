@@ -2,7 +2,7 @@ defmodule Bindepot.Core.Asset do
   import Ecto.Changeset
   use Ecto.Schema
 
-  alias Bindepot.Core.{Repository, Store}
+  alias Bindepot.Core.{Repository, Filestore}
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
@@ -12,7 +12,7 @@ defmodule Bindepot.Core.Asset do
 
     field :name, :string
 
-    belongs_to :store, Store
+    belongs_to :filestore, Filestore, foreign_key: :filestore_name, references: :name, type: :string
     belongs_to :repository, Repository
 
     timestamps()
@@ -25,8 +25,12 @@ defmodule Bindepot.Core.Asset do
       :id,
       :store_path,
       :name,
+      :filestore_name,
+      :repository_id,
       :accessed_at
     ])
+    |> assoc_constraint(:filestore)
+    |> assoc_constraint(:repository)
     |> validate_required([:name])
   end
 end

@@ -7,7 +7,7 @@ defmodule Bindepot.PyPI.API do
   alias Bindepot.Repo
   alias Bindepot.Core.Repositories, as: CoreRepos
   alias Bindepot.PyPI.{Package, Release, DistFile}
-  alias Bindepot.Storage.LocalStore
+  alias Bindepot.Storage.FilesystemStorage
 
   # List packages for a repo
   def list_packages(repo_id, opts \\ %{}) do
@@ -219,7 +219,7 @@ defmodule Bindepot.PyPI.API do
     end
   end
 
-  defp store, do: Application.get_env(:bindepot, :store, LocalStore)
+  defp store, do: Application.get_env(:bindepot, :store, FilesystemStorage)
 
   defp ensure_not_deleted(%{deleted_at: nil}), do: :ok
   defp ensure_not_deleted(_), do: {:error, :repo_deleted}

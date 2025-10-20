@@ -105,7 +105,7 @@ defmodule BindepotWeb.Api.RepositoryController do
     |> send_resp(200, Jason.encode!(resp, pretty: true))
   end
 
-  defp store, do: Application.get_env(:bindepot, :store, Bindepot.Storage.LocalStore)
+  defp store, do: Application.get_env(:bindepot, :store, Bindepot.Storage.FilesystemStorage)
 
   defp read_request_body(conn, file) do
     case read_body(conn) do

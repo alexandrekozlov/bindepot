@@ -1,12 +1,11 @@
-defmodule Bindepot.Core.Store do
+defmodule Bindepot.Core.Filestore do
   use Ecto.Schema
   import Ecto.Changeset
 
-  @primary_key {:id, :binary_id, autogenerate: true}
-  @foreign_key_type :binary_id
+  @primary_key false
 
-  schema "stores" do
-    field :name, :string
+  schema "filestores" do
+    field :name, :string, primary_key: true
     field :provider, :string
     field :configuration, :map
   end
@@ -15,5 +14,6 @@ defmodule Bindepot.Core.Store do
     struct
     |> cast(params, [:name, :provider, :configuration])
     |> validate_required([:name, :provider])
+    |> unique_constraint(:name)
   end
 end
