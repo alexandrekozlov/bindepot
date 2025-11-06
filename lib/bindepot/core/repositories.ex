@@ -10,7 +10,6 @@ defmodule Bindepot.Core.Repositories do
   alias Bindepot.Repo
   alias Bindepot.Core.Repository
   alias Bindepot.Core.Asset
-  alias Bindepot.Core.Filestores
 
   require Logger
 
@@ -189,30 +188,6 @@ defmodule Bindepot.Core.Repositories do
 
   defp ensure_store(asset) do
     asset
-  end
-
-  def put_asset(%Repository{} = repo, name, source_path) do
-    id = UUID.uuid4()
-
-    store = Filestores.default()
-    {:ok, file} = Filestores.store(store, source_path, id)
-
-    changeset =
-      Asset.changeset(%Asset{}, %{
-        id: id,
-        name: name,
-        store_path: file,
-      #  filestore_name: nil
-      })
-      |> Ecto.Changeset.put_assoc(:filestore, store)
-      |> Ecto.Changeset.put_assoc(:repository, repo)
-
-    Repo.insert(changeset)
-  end
-
-  def get_asset(%Asset{} = asset) do
-    ass = Repo.preload(asset, [:repository, :filestore])
-    Filestores.retrieve(ass.filestore, ass.store_path)
   end
 
   defp get_query(options) do

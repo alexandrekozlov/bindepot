@@ -2,6 +2,7 @@ defmodule Bindepot.Core.RepositoryTest do
   use Bindepot.DataCase
 
   alias Bindepot.Core.Repositories
+  alias Bindepot.Core.Assets
 
   describe "all/1" do
     setup do
@@ -102,7 +103,7 @@ defmodule Bindepot.Core.RepositoryTest do
 
     test "put and get", %{repository: repository} do
       assert {:ok, asset} =
-               Repositories.put_asset(
+               Assets.put(
                  repository,
                  "asset.bin",
                  Path.expand("./test/data/artifact.txt")
@@ -113,8 +114,40 @@ defmodule Bindepot.Core.RepositoryTest do
       assert asset.store_path != nil
       assert asset.filestore != nil
 
-      assert {:ok, result} = Repositories.get_asset(asset)
+      assert {:ok, result} = Assets.get(asset)
       assert File.exists?(result)
+    end
+
+    test "put multiple assets", %{repository: repository} do
+      assert {:ok, _asset} =
+               Assets.put(
+                 repository,
+                 "asset.bin",
+                 Path.expand("./test/data/artifact.txt")
+               )
+
+      assert {:ok, _asset} =
+               Assets.put(
+                 repository,
+                 "/other/asset.bin",
+                 Path.expand("./test/data/artifact.txt")
+               )
+    end
+
+    test "replace asset", %{repository: repository} do
+      assert {:ok, _asset} =
+               Assets.put(
+                 repository,
+                 "asset.bin",
+                 Path.expand("./test/data/artifact.txt")
+               )
+
+      assert {:ok, _asset} =
+               Assets.put(
+                 repository,
+                 "asset.bin",
+                 Path.expand("./test/data/artifact.txt")
+               )
     end
   end
 end

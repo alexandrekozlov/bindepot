@@ -23,10 +23,19 @@ defmodule Bindepot.Core.Filestores do
     mod.put(provider_config, source_file, id)
   end
 
+  @doc """
+    Get file by logical path.
+
+    Returns `{ :ok, file_path }`.
+  """
   def retrieve(%Filestore{} = store, path) do
     mod = String.to_existing_atom(store.provider)
     provider_config = mod.from_configuration(store.configuration)
     mod.get(provider_config, path)
+  end
+
+  def retrieve(nil, path) do
+    retrieve(default(), path)
   end
 
   defp data_path() do

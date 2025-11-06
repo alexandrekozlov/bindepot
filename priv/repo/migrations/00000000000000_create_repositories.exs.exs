@@ -31,10 +31,20 @@ defmodule Bindepot.Repo.Migrations.CreateRepositories do
       add :name, :string, null: false
 
       add :filestore_name,
-          references(:filestores, column: :name, type: :string, on_delete: :nothing, on_update: :update_all)
+          references(:filestores,
+            column: :name,
+            type: :string,
+            on_delete: :nothing,
+            on_update: :update_all
+          )
 
       add :repository_id,
-          references(:repositories, column: :id, type: :uuid, on_delete: :delete_all, on_update: :update_all)
+          references(:repositories,
+            column: :id,
+            type: :uuid,
+            on_delete: :delete_all,
+            on_update: :update_all
+          )
 
       timestamps()
       add :accessed_at, :naive_datetime_usec

@@ -1,6 +1,9 @@
 defmodule BindepotWeb.Api.RepositoryController do
   use BindepotWeb, :controller
 
+  import Ecto.Query
+  alias Bindepot.Core.Asset
+  alias Bindepot.Core.Assets
   alias Bindepot.Core.Repositories
   alias Bindepot.Core.Repository
 
@@ -80,24 +83,42 @@ defmodule BindepotWeb.Api.RepositoryController do
     |> send_resp(resp.id, Jason.encode!(resp, pretty: true))
   end
 
-  def upload(conn, %{"name" => name, "path" => path} = _params) do
-    repo = Repositories.get_by_name(name)
-    repo_path = store().repo_path(repo.id)
-    rel_path = Path.join(path)
-    {:ok, rel_artifact_path} = Path.safe_relative(rel_path, repo_path)
-    artifact_path = Path.join(repo_path, rel_artifact_path)
-    IO.inspect(artifact_path)
+  def list_assets(conn, _params) do
+    assets = Assets.all()
 
-    artifact_path
-    |> Path.dirname()
-    |> File.mkdir_p!()
+    resp =
+      Enum.map(assets, fn x ->
+        %{
+          repository: x.repository.name,
+          name: x.name
+        }
+      end)
 
-    File.open!(artifact_path, [:binary, :write], fn file ->
-      read_request_body(conn, file)
-    end)
+    IO.inspect(resp)
+
+    conn
+    |> put_resp_content_type("application/json")
+    |> send_resp(200, Jason.encode!(resp, pretty: true))
+  end
+
+  def upload(conn, %{"name" => repo_name, "path" => path} = _params) do
+    repo = Repositories.get_by_name(repo_name)
+
+    rel_artifact_path =
+      path
+      |> Path.join()
+      |> Path.expand("/")
+
+    temp =
+      Temp.open!(nil, fn file ->
+        read_request_body(conn, file)
+      end)
+
+    {:ok, asset} = Assets.put(repo, rel_artifact_path, temp)
+    File.rm(temp)
 
     resp = %{
-      "path" => artifact_path
+      "path" => asset.name
     }
 
     conn
@@ -105,7 +126,19 @@ defmodule BindepotWeb.Api.RepositoryController do
     |> send_resp(200, Jason.encode!(resp, pretty: true))
   end
 
-  defp store, do: Application.get_env(:bindepot, :store, Bindepot.Storage.FilesystemStorage)
+  def download(conn, %{"name" => repo_name, "path" => path} = _params) do
+    rel_artifact_path =
+      path
+      |> Path.join()
+      |> Path.expand("/")
+
+    {:ok, file_path} = Assets.get(from a in Asset, where: a.name == ^rel_artifact_path)
+
+    send_download(conn, {:file, file_path},
+      filename: Path.basename(rel_artifact_path),
+      disposition: :attachment
+    )
+  end
 
   defp read_request_body(conn, file) do
     case read_body(conn) do

@@ -2,6 +2,7 @@ defmodule BindepotWeb.RepositoryLive.Show do
   use BindepotWeb, :live_view
 
   import Ecto.Query
+  alias Bindepot.Core.Assets
   alias Bindepot.Core.Repositories
 
   @impl true
@@ -15,7 +16,8 @@ defmodule BindepotWeb.RepositoryLive.Show do
     {:ok,
      socket
      |> assign(:page_title, "Show Repository")
-     |> assign(:repository, Repositories.get(id))
-     |> assign(:subrepos, subrepos)}
+     |> assign(:repository, vrepo)
+     |> assign(:subrepos, subrepos)
+     |> assign(:assets, Assets.all(vrepo))}
   end
 end

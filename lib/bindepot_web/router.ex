@@ -31,9 +31,9 @@ defmodule BindepotWeb.Router do
   scope "/bindepot", BindepotWeb do
     pipe_through :api
 
-    # scope "/repositories" do
-    #   get "/:name/*path", RepositoryController, :download
-    # end
+    scope "/repositories" do
+      get "/:name/*path", Api.RepositoryController, :download
+    end
 
     scope "/api", Api do
       get "/repositories", RepositoryController, :list_repositories
@@ -41,7 +41,10 @@ defmodule BindepotWeb.Router do
       # FIXME: should be :name
       delete "/repositories/:id", RepositoryController, :delete_repository
 
+      get "/repositories/:name/*path", RepositoryController, :upload
       put "/repositories/:name/*path", RepositoryController, :upload
+
+      get "/assets", RepositoryController, :list_assets
 
       # scope "/pypi" do
       #   get "/:repository/simple/", PypiController, :simple_index

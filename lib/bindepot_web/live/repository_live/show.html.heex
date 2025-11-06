@@ -30,4 +30,11 @@
       </.table>
     </:item>
   </.list>
+
+  <.header>
+    Assets
+    <.table rows={@assets} id="assets">
+      <:col :let={asset} label="Name">{asset.name}</:col>
+    </.table>
+  </.header>
 </Layouts.app>

@@ -12,7 +12,11 @@ defmodule Bindepot.Core.Asset do
 
     field :name, :string
 
-    belongs_to :filestore, Filestore, foreign_key: :filestore_name, references: :name, type: :string
+    belongs_to :filestore, Filestore,
+      foreign_key: :filestore_name,
+      references: :name,
+      type: :string
+
     belongs_to :repository, Repository
 
     timestamps()
