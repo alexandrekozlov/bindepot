@@ -13,11 +13,20 @@ defmodule BindepotWeb.RepositoryLive.Show do
 
     subrepos = Bindepot.Repo.all(query)
 
+    assets =
+      Enum.map(Assets.all(vrepo), fn a ->
+        %{
+          asset: a,
+          url:
+            BindepotWeb.Endpoint.static_url() <> "/bindepot/repositories/" <> vrepo.name <> a.name
+        }
+      end)
+
     {:ok,
      socket
      |> assign(:page_title, "Show Repository")
      |> assign(:repository, vrepo)
      |> assign(:subrepos, subrepos)
-     |> assign(:assets, Assets.all(vrepo))}
+     |> assign(:assets, assets)}
   end
 end

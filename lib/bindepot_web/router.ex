@@ -41,7 +41,7 @@ defmodule BindepotWeb.Router do
       # FIXME: should be :name
       delete "/repositories/:id", RepositoryController, :delete_repository
 
-      get "/repositories/:name/*path", RepositoryController, :upload
+      get "/repositories/:name/*path", RepositoryController, :download
       put "/repositories/:name/*path", RepositoryController, :upload
 
       get "/assets", RepositoryController, :list_assets

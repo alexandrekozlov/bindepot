@@ -132,7 +132,14 @@ defmodule BindepotWeb.Api.RepositoryController do
       |> Path.join()
       |> Path.expand("/")
 
-    {:ok, file_path} = Assets.get(from a in Asset, where: a.name == ^rel_artifact_path)
+    q =
+      from a in Asset,
+        join: r in Repository,
+        on: r.id == a.repository_id,
+        where: r.name == ^repo_name,
+        where: a.name == ^rel_artifact_path
+
+    {:ok, file_path} = Assets.get(q)
 
     send_download(conn, {:file, file_path},
       filename: Path.basename(rel_artifact_path),
