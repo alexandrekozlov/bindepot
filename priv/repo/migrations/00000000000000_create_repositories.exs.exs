@@ -27,8 +27,10 @@ defmodule Bindepot.Repo.Migrations.CreateRepositories do
 
     create table(:assets, primary_key: false) do
       add :id, :uuid, primary_key: true, null: false
-      add :store_path, :string, null: false
+      add :blob_ref, :string, null: false
+      add :path, :string, null: true
       add :name, :string, null: false
+      add :version, :string, null: true
 
       add :filestore_name,
           references(:filestores,

@@ -3,6 +3,8 @@ defmodule Bindepot.PyPI.Package do
   import Ecto.Changeset
 
   @primary_key {:id, :binary_id, autogenerate: true}
+  @foreign_key_type :binary_id
+
   schema "pypi_packages" do
     field :name, :string
     field :normalized_name, :string

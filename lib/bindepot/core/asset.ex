@@ -8,9 +8,11 @@ defmodule Bindepot.Core.Asset do
   @foreign_key_type :binary_id
 
   schema "assets" do
-    field :store_path, :string
+    field :blob_ref, :string
 
+    field :path, :string
     field :name, :string
+    field :version, :string
 
     belongs_to :filestore, Filestore,
       foreign_key: :filestore_name,
@@ -27,7 +29,7 @@ defmodule Bindepot.Core.Asset do
     struct
     |> cast(params, [
       :id,
-      :store_path,
+      :blob_ref,
       :name,
       :filestore_name,
       :repository_id,

@@ -26,7 +26,7 @@ defmodule Bindepot.Core.Assets do
       Asset.changeset(%Asset{}, %{
         id: id,
         name: name,
-        store_path: file,
+        blob_ref: file,
         filestore_name: nil
       })
       # Cannot use put_assoc, since default store is never persisted.
@@ -44,12 +44,12 @@ defmodule Bindepot.Core.Assets do
 
   def get(%Asset{} = asset) do
     ass = Repo.preload(asset, [:repository, :filestore])
-    Filestores.retrieve(ass.filestore, ass.store_path)
+    Filestores.retrieve(ass.filestore, ass.blob_ref)
   end
 
   def get(%Ecto.Query{} = q) do
     asset = Repo.one!(q)
     ass = Repo.preload(asset, [:repository, :filestore])
-    Filestores.retrieve(ass.filestore, ass.store_path)
+    Filestores.retrieve(ass.filestore, ass.blob_ref)
   end
 end

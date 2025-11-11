@@ -3,6 +3,8 @@ defmodule Bindepot.PyPI.Release do
   import Ecto.Changeset
 
   @primary_key {:id, :binary_id, autogenerate: true}
+  @foreign_key_type :binary_id
+
   schema "pypi_releases" do
     field :version, :string
     field :released_at, :naive_datetime_usec

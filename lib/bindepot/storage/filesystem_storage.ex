@@ -94,6 +94,16 @@ defmodule Bindepot.Storage.FilesystemStorage do
     end
   end
 
+  def get_stream(%FilesystemStorage{store_root_directory: store_root_directory}, rel_object_path) do
+    full_path = Path.join(store_root_directory, rel_object_path)
+
+    if File.exists?(full_path) do
+      {:ok, File.stream!(full_path, 4096)}
+    else
+      {:error, "file not found"}
+    end
+  end
+
   def new_object(id) do
     case id |> String.replace("-", "") |> String.slice(0, 2) do
       "" -> id

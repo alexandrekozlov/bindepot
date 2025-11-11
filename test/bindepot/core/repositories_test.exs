@@ -111,7 +111,7 @@ defmodule Bindepot.Core.RepositoryTest do
 
       assert asset.id != nil
       assert asset.name == "asset.bin"
-      assert asset.store_path != nil
+      assert asset.blob_ref != nil
       assert asset.filestore != nil
 
       assert {:ok, result} = Assets.get(asset)

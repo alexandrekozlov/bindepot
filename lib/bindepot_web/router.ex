@@ -14,6 +14,10 @@ defmodule BindepotWeb.Router do
     plug :accepts, ["json"]
   end
 
+  pipeline :simple do
+    plug :accepts, ["html"]
+  end
+
   scope "/", BindepotWeb do
     pipe_through :browser
 
@@ -29,13 +33,14 @@ defmodule BindepotWeb.Router do
   end
 
   scope "/bindepot", BindepotWeb do
-    pipe_through :api
-
     scope "/repositories" do
+      pipe_through :simple
       get "/:name/*path", Api.RepositoryController, :download
+      post "/:repo/legacy/", PypiController, :legacy_upload
     end
 
     scope "/api", Api do
+      pipe_through :api
       get "/repositories", RepositoryController, :list_repositories
       put "/repositories/:name", RepositoryController, :create_repository
       # FIXME: should be :name
