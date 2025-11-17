@@ -12,75 +12,69 @@ defmodule Bindepot.Core.Repository do
 
   schema "repositories" do
     field :name, :string
-    field :repository_type, :string
+    field :type, :string
     field :package_type, :string
     field :url, :string
     field :repositories, {:array, :string}
 
-    has_many :asset, Asset
+    has_many :assets, Asset
 
     timestamps()
     field :deleted_at, :naive_datetime
   end
 
-  @repo_types ~w(local remote virtual)
+  @repository_types ~w(local remote virtual)
 
-  def changeset(struct, params) do
+  def create_changeset(struct, params) do
     struct
     |> cast(params, [
       :id,
       :name,
-      :repository_type,
+      :type,
       :package_type,
       :url,
-      :repositories,
-      :deleted_at
+      :repositories
     ])
-    |> validate_required([:name, :repository_type, :package_type])
-    |> validate_inclusion(:repository_type, @repo_types)
+    |> validate_required([:name, :type, :package_type])
+    |> validate_format(:name, ~r/\S+/)
+    |> validate_inclusion(:type, @repository_types)
     |> validate_configuration()
     |> unique_constraint(:name)
   end
 
-  def change(struct, :new, params) do
+  def update_changeset(struct, params) do
     struct
-    |> cast(params, ~W(name repository_type package_type url repositories)a)
-    |> validate_format(:name, ~r/\S+/)
-    |> validate_inclusion(:repository_type, @repo_types)
-  end
-
-  def change(struct, :edit, params) do
-    struct
-    |> cast(params, ~W(name url repositories)a)
+    |> cast(params, [
+      :name,
+      :url,
+      :repositories
+    ])
     |> validate_required([:name])
     |> validate_configuration()
+    |> unique_constraint(:name)
+  end
+
+  def change(repository, :new, params) do
+    create_changeset(repository, params)
+  end
+
+  def change(repository, :edit, params) do
+    update_changeset(repository, params)
+  end
+
+  def delete_changeset(struct, params) do
+    struct
+    |> cast(params, [:name, :deleted_at])
+    |> validate_required([:deleted_at])
   end
 
   def repository_types() do
-    Enum.to_list(@repo_types)
-  end
-
-  def new(struct = %Repository{}, params) do
-    struct
-    |> cast(params, [:name, :repository_type, :package_type, :url, :repositories])
-  end
-
-  def change(struct = %Repository{}, params) do
-    struct
-    |> cast(params, [:name, :url, :repositories])
-    |> unique_constraint(:name)
-    |> validate_configuration()
-  end
-
-  def delete(struct = %Repository{}, params) do
-    struct
-    |> cast(params, [:id])
-    |> validate_required([:id])
+    Enum.to_list(@repository_types)
   end
 
   def is_repository_type(%Changeset{} = changeset, repository_type)
       when is_atom(repository_type) do
-    case get_field(changeset, :repository_type) do
+    case get_field(changeset, :type) do
       type when is_atom(type) ->
         type == repository_type
 
@@ -100,8 +94,32 @@ defmodule Bindepot.Core.Repository do
     repo |> change() |> is_repository_type(:virtual)
   end
 
-  def deleted() do
-    from(p in Repository, where: not is_nil(p.deleted_at))
+  def base() do
+    Repository
+  end
+
+  def all(query \\ base()) do
+    query
+  end
+
+  def existing(query \\ base()) do
+    where(query, [r], is_nil(r.deleted_at))
+  end
+
+  def deleted(query \\ base()) do
+    where(query, [r], not is_nil(r.deleted_at))
+  end
+
+  def by_name(query \\ base(), name) do
+    where(query, [r], r.name == ^name)
+  end
+
+  def by_repository_type(query \\ base(), repository_type) do
+    where(query, [r], r.type == ^repository_type)
+  end
+
+  def by_package_type(query \\ base(), package_type) do
+    where(query, [r], r.package_type == ^package_type)
   end
 
   defp validate_configuration(changeset) do

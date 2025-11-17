@@ -22,7 +22,7 @@ defmodule BindepotWeb.Api.RepositoryController do
     result =
       params
       |> Map.put("repository_name", repository_name)
-      |> Map.put_new("repository_type", "local")
+      |> Map.put_new("type", "local")
       |> Map.put_new("package_type", "generic")
       |> Repositories.create()
 
@@ -58,10 +58,8 @@ defmodule BindepotWeb.Api.RepositoryController do
   end
 
   def delete_repository(conn, %{"id" => id}) do
-    repo = Repositories.get(id)
-
     resp =
-      case Repositories.delete(repo) do
+      case Repositories.delete(id) do
         {:ok, _r} ->
           %{
             :id => id,
@@ -109,12 +107,14 @@ defmodule BindepotWeb.Api.RepositoryController do
       |> Path.join()
       |> Path.expand("/")
 
+    filename = Path.basename(path)
+
     temp =
       Temp.open!(nil, fn file ->
         read_request_body(conn, file)
       end)
 
-    {:ok, asset} = Assets.put(repo, rel_artifact_path, temp)
+    {:ok, asset} = Assets.put(repo.id, filename, rel_artifact_path, temp)
     File.rm(temp)
 
     resp = %{
@@ -144,6 +144,35 @@ defmodule BindepotWeb.Api.RepositoryController do
     send_download(conn, {:file, file_path},
       filename: Path.basename(rel_artifact_path),
       disposition: :attachment
+    )
+  end
+
+  defp request_body_stream(conn) do
+    Stream.resource(
+      fn ->
+        {:ok, conn}
+      end,
+      fn state ->
+        case state do
+          {:ok, conn} ->
+            case read_body(conn) do
+              {:ok, body, conn} ->
+                {body, {:halt, conn}}
+
+              {:more, body, conn} ->
+                {body, {:ok, conn}}
+
+              {:error, _reason} ->
+                {:halt, {:error, conn}}
+            end
+
+          {:halt, conn} ->
+            {:halt, conn}
+        end
+      end,
+      fn _state ->
+        :ok
+      end
     )
   end
 

@@ -7,198 +7,72 @@ defmodule Bindepot.Core.Repositories do
 
   import Ecto.Query, warn: false
 
+  alias Bindepot.Core.Repositories
   alias Bindepot.Repo
   alias Bindepot.Core.Repository
-  alias Bindepot.Core.Asset
 
   require Logger
 
-  @doc """
-    Returns repositories.
-
-    ## Options
-      * `:include_deleted` - also include soft-deleted repositories.
-      * `:package_type` - include only specific package type
-  """
-  def all(options \\ []) do
-    include_deleted = Keyword.get(options, :include_deleted, false)
-    package_type = Keyword.get(options, :package_type, nil)
-
-    base =
-      from r in Repository,
-        order_by: [asc: r.name]
-
-    query =
-      if include_deleted do
-        base
-      else
-        from r in base, where: is_nil(r.deleted_at)
-      end
-
-    filter =
-      if is_nil(package_type) do
-        query
-      else
-        from r in query, where: r.package_type == ^package_type
-      end
-
-    Repo.all(filter)
+  def all() do
+    Repository.all()
+    |> Repository.existing()
+    |> Repo.all()
   end
 
-  def deleted() do
-    Repo.all(Repository.deleted())
+  def all_deleted() do
+    Repository.deleted()
+    |> Repo.all()
   end
 
-  def deleted?(%Repository{deleted_at: deleted_at}) do
-    deleted_at != nil
+  def all_of_package_type(package_type) do
+    Repository.all()
+    |> Repository.existing()
+    |> Repository.by_package_type(package_type)
+    |> Repo.all()
   end
 
-  @doc """
-    Get repository by ID.
+  def get(id) do
+    Repo.get(Repository, id)
+  end
 
-    ## Options
-      * `:allow_deleted` - allow to retrieve a soft-deleted repository.
-  """
-  def get(id, options \\ []) do
-    options
-    |> get_query()
+  def get_deleted(id) do
+    Repository.deleted()
     |> Repo.get(id)
   end
 
-  @doc """
-    Get repository by name.
-
-    ## Options
-      * `:allow_deleted` - allow to retrieve a soft-deleted repository.
-  """
-  def get_by_name(name, options \\ []) do
-    options
-    |> get_query()
-    |> Repo.get_by(name: name)
+  def get_by_name(name) do
+    Repository.all()
+    |> Repository.existing()
+    |> Repository.by_name(name)
+    |> Repo.one()
   end
 
   def create(params) do
-    changeset = Repository.changeset(%Repository{}, params)
-    Repo.insert(changeset)
+    %Repository{}
+    |> Repository.create_changeset(params)
+    |> Repo.insert()
   end
 
-  def change(repo, params) do
-    repo
-    |> Repository.change(:edit, params)
+  def update(%Repository{} = repository, params) do
+    repository
+    |> Repository.update_changeset(params)
     |> Repo.update()
   end
 
-  def delete(repository_or_id, opts \\ [])
+  def delete(id) do
+    repository = Repositories.get(id)
 
-  def delete(%Repository{} = repository, opts) do
+    deleted_name = "$deleted_#{repository.name}_#{repository.id}"
+
     now = NaiveDateTime.utc_now(:microsecond) |> NaiveDateTime.truncate(:second)
-    r = if opts[:reload], do: get(repository.id), else: repository
 
-    r
-    |> Ecto.Changeset.change(deleted_at: now)
+    repository
+    |> Repository.delete_changeset(%{name: deleted_name, deleted_at: now})
     |> Repo.update()
   end
 
-  def delete(repository_id, opts) do
-    delete(%Repository{id: repository_id}, Keyword.put(opts, :reload, true))
+  def purge(id) do
+    repository = Repositories.get_deleted(id)
+    repository && Repo.delete(repository)
   end
-
-  def purge(%Repository{id: id}, opts \\ []) do
-    require_soft_deleted = Keyword.get(opts, :require_soft_deleted, true)
-
-    # FIXME: It is a mess here, clean up and prettify.
-    case get(id, allow_deleted: true) do
-      repository ->
-        if require_soft_deleted and is_nil(repository.deleted_at) do
-          {:error, :not_soft_deleted}
-        else
-          # Step 1: remove filesystem (best-effort early fail)
-          case store().delete_repo_dir(repository.id) do
-            :ok ->
-              # Step 2: remove DB rows in transaction (cascades will clear package rows)
-              case Repo.delete(repository) do
-                {:ok, %{} = _} ->
-                  {:ok, :deleted}
-
-                {:error, reason} ->
-                  # DB delete failed even though FS was removed — log and return error
-                  Logger.error(
-                    "DB delete failed when hard-deleting repo #{repository.id}: #{Kernel.inspect(reason)}"
-                  )
-
-                  {:error, {:db_delete_failed, reason}}
-
-                other ->
-                  # Unexpected return shape
-                  Logger.error(
-                    "Unexpected Repo.transaction result when hard-deleting repo #{repository.id}: #{Kernel.inspect(other)}"
-                  )
-
-                  {:error, {:unexpected, other}}
-              end
-
-            {:error, reason, _file} ->
-              Logger.error(
-                "Failed to remove repo dir for hard-delete #{repository.id}: #{Kernel.inspect(reason)}"
-              )
-
-              {:error, {:rm_failed, reason}}
-
-            # Some store implementations may return other truthy values; treat them as success
-            other ->
-              Logger.debug(
-                "store().delete_repo_dir returned: #{Kernel.inspect(other)}; proceeding to DB delete"
-              )
-
-              case Repo.delete!(repository) do
-                {:ok, %{} = _} ->
-                  {:ok, :deleted}
-
-                {:error, reason} ->
-                  Logger.error(
-                    "DB delete failed when hard-deleting repo #{repository.id}: #{Kernel.inspect(reason)}"
-                  )
-
-                  {:error, {:db_delete_failed, reason}}
-
-                other2 ->
-                  Logger.error(
-                    "Unexpected Repo.transaction result when hard-deleting repo #{repository.id}: #{Kernel.inspect(other2)}"
-                  )
-
-                  {:error, {:unexpected, other2}}
-              end
-          end
-        end
-    end
-  end
-
-  def assets(q \\ Asset) do
-    assets =
-      Repo.all(q)
-      |> Repo.preload([:repository, :filestore])
-      |> Enum.map(&ensure_store/1)
-
-    assets
-  end
-
-  defp ensure_store(%Asset{filestore: nil} = asset) do
-    %{asset | filestore: Bindepot.Core.Filestores.default()}
-  end
-
-  defp ensure_store(asset) do
-    asset
-  end
-
-  defp get_query(options) do
-    allow_deleted = Keyword.get(options, :allow_deleted, false)
-
-    if allow_deleted do
-      Repository
-    else
-      from r in Repository, where: is_nil(r.deleted_at)
-    end
-  end
-
-  defp store, do: Application.get_env(:bindepot, :store, Bindepot.Storage.FilesystemStorage)
 end

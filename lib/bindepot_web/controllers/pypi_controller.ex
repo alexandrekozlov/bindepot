@@ -1,11 +1,8 @@
 defmodule BindepotWeb.PypiController do
   use BindepotWeb, :controller
 
-  import Ecto.Query
-  alias Bindepot.Core.Asset
-  alias Bindepot.Core.Assets
   alias Bindepot.Core.Repositories
-  alias Bindepot.Core.Repository
+  alias Bindepot.Core.Assets
 
   def legacy_upload(conn, params) do
     # enforce auth
@@ -33,13 +30,13 @@ defmodule BindepotWeb.PypiController do
     # upload content
     upload = Map.get(params, "content")
 
-    repo = Repositories.get(repo_key)
+    repo = Repositories.get_by_name(repo_key)
 
-    with :local = repo.repository_type,
+    with :local = repo.type,
          :pypi = repo.package_type do
       case upload do
         %Plug.Upload{filename: fname, path: path} ->
-          Assets.put(repo, Path.join([name, version, fname]), path)
+          Assets.put(repo, fname, Path.join([name, version, fname]), path)
           {:ok, "good"}
 
         _ ->

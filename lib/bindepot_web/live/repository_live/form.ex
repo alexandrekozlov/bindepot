@@ -35,7 +35,7 @@ defmodule BindepotWeb.RepositoryLive.Form do
     socket
     |> assign(:page_title, "Edit Repository")
     |> assign(:repository, repository)
-    |> assign(:form, to_form(Repository.change(repository, %{})))
+    |> assign(:form, to_form(Repository.update_changeset(repository, %{})))
     |> assign(:repositories, all_but_self_repositories(repository.package_type, repository))
     |> assign(:repository_types, Repository.repository_types())
     |> assign(:package_types, Bindepot.PackageAdapters.package_types())
@@ -67,7 +67,15 @@ defmodule BindepotWeb.RepositoryLive.Form do
   end
 
   defp all_but_self_repositories(package_type, self \\ nil) do
-    repos = Repositories.all(package_type: package_type)
+    repos =
+      case package_type do
+        nil ->
+          Repositories.all()
+
+        _ ->
+          Repositories.all_of_package_type(package_type)
+      end
+
     rs = for r <- repos, do: {r.name, r.id}
 
     if is_nil(self) do
@@ -78,7 +86,7 @@ defmodule BindepotWeb.RepositoryLive.Form do
   end
 
   defp save_repository(socket, :edit, repository_params) do
-    case Repositories.change(socket.assigns.repository, repository_params) do
+    case Repositories.update(socket.assigns.repository, repository_params) do
       {:ok, repository} ->
         {:noreply,
          socket
@@ -91,6 +99,8 @@ defmodule BindepotWeb.RepositoryLive.Form do
   end
 
   defp save_repository(socket, :new, repository_params) do
+    IO.inspect(repository_params)
+
     case Repositories.create(repository_params) do
       {:ok, repository} ->
         {:noreply,

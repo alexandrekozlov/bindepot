@@ -8,7 +8,7 @@ defmodule Bindepot.Core.RepositoryTest do
     setup do
       repository = %{
         name: "generic",
-        repository_type: "local",
+        type: "local",
         package_type: "generic"
       }
 
@@ -27,15 +27,16 @@ defmodule Bindepot.Core.RepositoryTest do
     test "do not list deleted repos", %{repository: repository} do
       Repositories.create(repository)
       assert [%{name: "generic"} = repo] = Repositories.all()
-      Repositories.delete(repo)
+      Repositories.delete(repo.id)
       assert Repositories.all() == []
     end
 
     test "list deleted repos", %{repository: repository} do
       Repositories.create(repository)
       [repo] = Repositories.all()
-      Repositories.delete(repo)
-      assert [%{name: "generic"}] = Repositories.all(include_deleted: true)
+      Repositories.delete(repo.id)
+      [%{name: name}] = Repositories.all_deleted()
+      assert name =~ ~r/\$deleted_generic_.+/
     end
   end
 
@@ -46,11 +47,11 @@ defmodule Bindepot.Core.RepositoryTest do
       assert {:ok, repository} =
                Repositories.create(%{
                  name: "generic",
-                 repository_type: "local",
+                 type: "local",
                  package_type: "generic"
                })
 
-      assert %{name: "generic", repository_type: "local", package_type: "generic"} = repository
+      assert %{name: "generic", type: "local", package_type: "generic"} = repository
 
       assert repository.id != nil
       assert repository.url == nil
@@ -67,14 +68,14 @@ defmodule Bindepot.Core.RepositoryTest do
       assert {:ok, repository} =
                Repositories.create(%{
                  name: "generic",
-                 repository_type: "remote",
+                 type: "remote",
                  package_type: "generic",
                  url: "http://ftp.zymeworks.com"
                })
 
       assert %{
                name: "generic",
-               repository_type: "remote",
+               type: "remote",
                package_type: "generic",
                url: "http://ftp.zymeworks.com"
              } =
@@ -93,7 +94,7 @@ defmodule Bindepot.Core.RepositoryTest do
     setup do
       params = %{
         name: "generic",
-        repository_type: "local",
+        type: "local",
         package_type: "generic"
       }
 
@@ -104,15 +105,14 @@ defmodule Bindepot.Core.RepositoryTest do
     test "put and get", %{repository: repository} do
       assert {:ok, asset} =
                Assets.put(
-                 repository,
+                 repository.id,
+                 "asset.bin",
                  "asset.bin",
                  Path.expand("./test/data/artifact.txt")
                )
 
       assert asset.id != nil
       assert asset.name == "asset.bin"
-      assert asset.blob_ref != nil
-      assert asset.filestore != nil
 
       assert {:ok, result} = Assets.get(asset)
       assert File.exists?(result)
@@ -121,14 +121,16 @@ defmodule Bindepot.Core.RepositoryTest do
     test "put multiple assets", %{repository: repository} do
       assert {:ok, _asset} =
                Assets.put(
-                 repository,
+                 repository.id,
+                 "asset.bin",
                  "asset.bin",
                  Path.expand("./test/data/artifact.txt")
                )
 
       assert {:ok, _asset} =
                Assets.put(
-                 repository,
+                 repository.id,
+                 "/other/asset.bin",
                  "/other/asset.bin",
                  Path.expand("./test/data/artifact.txt")
                )
@@ -137,14 +139,16 @@ defmodule Bindepot.Core.RepositoryTest do
     test "replace asset", %{repository: repository} do
       assert {:ok, _asset} =
                Assets.put(
-                 repository,
+                 repository.id,
+                 "asset.bin",
                  "asset.bin",
                  Path.expand("./test/data/artifact.txt")
                )
 
       assert {:ok, _asset} =
                Assets.put(
-                 repository,
+                 repository.id,
+                 "asset.bin",
                  "asset.bin",
                  Path.expand("./test/data/artifact.txt")
                )
