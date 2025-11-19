@@ -24,6 +24,7 @@ defmodule BindepotWeb.Router do
     get "/", PageController, :home
 
     scope "/ui" do
+      live "/", RepositoryLive.Index, :index
       live "/repositories", RepositoryLive.Index, :index
       live "/repositories/new", RepositoryLive.Form, :new
       live "/repositories/:id", RepositoryLive.Show, :show
@@ -32,36 +33,36 @@ defmodule BindepotWeb.Router do
     end
   end
 
-  scope "/bindepot", BindepotWeb do
-    scope "/repositories" do
-      pipe_through :simple
-      get "/:name/*path", Api.RepositoryController, :download
-      post "/:repo/legacy/", PypiController, :legacy_upload
-    end
+  scope "/repositories", BindepotWeb do
+    pipe_through :simple
 
-    scope "/api", Api do
-      pipe_through :api
-      get "/repositories", RepositoryController, :list_repositories
-      put "/repositories/:name", RepositoryController, :create_repository
-      # FIXME: should be :name
-      delete "/repositories/:id", RepositoryController, :delete_repository
+    post "/:repo/*path", UploadController, :upload
+  end
 
-      get "/repositories/:name/*path", RepositoryController, :download
-      put "/repositories/:name/*path", RepositoryController, :upload
+  scope "/api", BindepotWeb.Api do
+    pipe_through :api
 
-      get "/assets", RepositoryController, :list_assets
+    get "/repositories", RepositoryController, :list_repositories
+    put "/repositories/:name", RepositoryController, :create_repository
+    delete "/repositories/:name", RepositoryController, :delete_repository
 
-      # scope "/pypi" do
-      #   get "/:repository/simple/", PypiController, :simple_index
-      #   get "/:repository/simple/:name/", PypiController, :project_index
+    get "/trash/repositories", RepositoryController, :list_deleted
+    delete "/trash/repositories/:id", RepositoryController, :purge_repository
 
-      #   get "/:repository/packages/:project/:version/:filename", PypiController, :serve_package
-      #   get "/:repository/packages/:project/:version/:filename/METADATA", PypiController, :serve_metadata
+    get "/storage/:repo/*path", AssetController, :list
+    put "/storage/:repo/*path", AssetController, :upload
+    get "/storage/:repo/*path", AssetController, :download
 
-      #   post "/:repository/legacy/", PypiController, :legacy_upload
-      #   # post "/:repository/pypi", PypiController, :xmlrpc
-      # end
-    end
+    # scope "/pypi" do
+    #   get "/:repository/simple/", PypiController, :simple_index
+    #   get "/:repository/simple/:name/", PypiController, :project_index
+
+    #   get "/:repository/packages/:project/:version/:filename", PypiController, :serve_package
+    #   get "/:repository/packages/:project/:version/:filename/METADATA", PypiController, :serve_metadata
+
+    #   post "/:repository/legacy/", PypiController, :legacy_upload
+    #   # post "/:repository/pypi", PypiController, :xmlrpc
+    # end
   end
 
   # Enable LiveDashboard in development

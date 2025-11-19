@@ -62,7 +62,7 @@ defmodule Bindepot.Core.Repositories do
   def delete(id) do
     repository = Repositories.get(id)
 
-    deleted_name = "$deleted_#{repository.name}_#{repository.id}"
+    deleted_name = "#{repository.name}$#{repository.id}"
 
     now = NaiveDateTime.utc_now(:microsecond) |> NaiveDateTime.truncate(:second)
 

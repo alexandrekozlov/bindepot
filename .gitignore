@@ -35,3 +35,7 @@ bindepot-*.tar
 npm-debug.log
 /assets/node_modules/
 
+/test/proj/py/dist/
+/test/proj/py/venv/
+/test/proj/py/build/
+/test/proj/py/**/*.egg-info*

@@ -1,9 +1,6 @@
 defmodule BindepotWeb.Api.RepositoryController do
   use BindepotWeb, :controller
 
-  import Ecto.Query
-  alias Bindepot.Core.Asset
-  alias Bindepot.Core.Assets
   alias Bindepot.Core.Repositories
   alias Bindepot.Core.Repository
 
@@ -18,10 +15,21 @@ defmodule BindepotWeb.Api.RepositoryController do
     |> send_resp(200, body)
   end
 
-  def create_repository(conn, %{"name" => repository_name} = params) do
+  def list_deleted(conn, _params) do
+    body =
+      Repositories.all_deleted()
+      |> sanitize_schema()
+      |> Jason.encode!(pretty: true)
+
+    conn
+    |> put_resp_content_type("application/json")
+    |> send_resp(200, body)
+  end
+
+  def create_repository(conn, %{"name" => name} = params) do
     result =
       params
-      |> Map.put("repository_name", repository_name)
+      |> Map.put("name", name)
       |> Map.put_new("type", "local")
       |> Map.put_new("package_type", "generic")
       |> Repositories.create()
@@ -57,19 +65,23 @@ defmodule BindepotWeb.Api.RepositoryController do
     |> send_resp(resp.result, Jason.encode!(resp, pretty: true))
   end
 
-  def delete_repository(conn, %{"id" => id}) do
+  def delete_repository(conn, %{"name" => name}) do
+    repo = Repositories.get_by_name(name)
+
     resp =
-      case Repositories.delete(id) do
+      case Repositories.delete(repo.id) do
         {:ok, _r} ->
           %{
-            :id => id,
+            :id => repo.id,
+            :name => repo.name,
             :result => 200,
             :message => "Deleted"
           }
 
         {:error, changeset} ->
           %{
-            :id => id,
+            :id => repo.id,
+            :name => repo.name,
             :result => 404,
             :message => "failed to delete repository",
             :errors => extract_errors(changeset)
@@ -78,123 +90,41 @@ defmodule BindepotWeb.Api.RepositoryController do
 
     conn
     |> put_resp_content_type("application/json")
-    |> send_resp(resp.id, Jason.encode!(resp, pretty: true))
+    |> send_resp(resp.result, Jason.encode!(resp, pretty: true))
   end
 
-  def list_assets(conn, _params) do
-    assets = Assets.all()
+  def purge_repository(conn, %{"id" => id}) do
+    repo = Repositories.get_deleted(id)
 
     resp =
-      Enum.map(assets, fn x ->
-        %{
-          repository: x.repository.name,
-          name: x.name
-        }
-      end)
+      case Repositories.purge(repo.id) do
+        {:ok, _r} ->
+          %{
+            :id => repo.id,
+            :name => repo.name,
+            :result => 200,
+            :message => "Purged"
+          }
 
-    IO.inspect(resp)
-
-    conn
-    |> put_resp_content_type("application/json")
-    |> send_resp(200, Jason.encode!(resp, pretty: true))
-  end
-
-  def upload(conn, %{"name" => repo_name, "path" => path} = _params) do
-    repo = Repositories.get_by_name(repo_name)
-
-    rel_artifact_path =
-      path
-      |> Path.join()
-      |> Path.expand("/")
-
-    filename = Path.basename(path)
-
-    temp =
-      Temp.open!(nil, fn file ->
-        read_request_body(conn, file)
-      end)
-
-    {:ok, asset} = Assets.put(repo.id, filename, rel_artifact_path, temp)
-    File.rm(temp)
-
-    resp = %{
-      "path" => asset.name
-    }
-
-    conn
-    |> put_resp_content_type("application/json")
-    |> send_resp(200, Jason.encode!(resp, pretty: true))
-  end
-
-  def download(conn, %{"name" => repo_name, "path" => path} = _params) do
-    rel_artifact_path =
-      path
-      |> Path.join()
-      |> Path.expand("/")
-
-    q =
-      from a in Asset,
-        join: r in Repository,
-        on: r.id == a.repository_id,
-        where: r.name == ^repo_name,
-        where: a.name == ^rel_artifact_path
-
-    {:ok, file_path} = Assets.get(q)
-
-    send_download(conn, {:file, file_path},
-      filename: Path.basename(rel_artifact_path),
-      disposition: :attachment
-    )
-  end
-
-  defp request_body_stream(conn) do
-    Stream.resource(
-      fn ->
-        {:ok, conn}
-      end,
-      fn state ->
-        case state do
-          {:ok, conn} ->
-            case read_body(conn) do
-              {:ok, body, conn} ->
-                {body, {:halt, conn}}
-
-              {:more, body, conn} ->
-                {body, {:ok, conn}}
-
-              {:error, _reason} ->
-                {:halt, {:error, conn}}
-            end
-
-          {:halt, conn} ->
-            {:halt, conn}
-        end
-      end,
-      fn _state ->
-        :ok
+        {:error, changeset} ->
+          %{
+            :id => repo.id,
+            :name => repo.name,
+            :result => 404,
+            :message => "failed to purge repository",
+            :errors => extract_errors(changeset)
+          }
       end
-    )
-  end
 
-  defp read_request_body(conn, file) do
-    case read_body(conn) do
-      {:ok, body, conn} ->
-        IO.binwrite(file, body)
-        {:ok, conn}
-
-      {:more, body, conn} ->
-        IO.binwrite(file, body)
-        read_request_body(conn, file)
-        {:ok, conn}
-
-      {:error, reason} ->
-        {:error, reason}
-    end
+    conn
+    |> put_resp_content_type("application/json")
+    |> send_resp(resp.result, Jason.encode!(resp, pretty: true))
   end
 
   defp sanitize_schema(list) when is_list(list) do
     f = fn e ->
       Map.from_struct(e)
+      |> remove_not_loaded_associations()
       |> Map.delete(:__meta__)
     end
 
@@ -204,7 +134,19 @@ defmodule BindepotWeb.Api.RepositoryController do
   defp sanitize_schema(%Repository{} = repo) do
     repo
     |> Map.from_struct()
+    |> remove_not_loaded_associations()
     |> Map.delete(:__meta__)
+  end
+
+  defp remove_not_loaded_associations(map) do
+    map
+    |> Enum.reduce(%{}, fn {key, value}, acc ->
+      if is_struct(value, Ecto.Association.NotLoaded) do
+        acc
+      else
+        Map.put(acc, key, value)
+      end
+    end)
   end
 
   defp extract_errors(%Ecto.Changeset{} = changeset) do

@@ -34,7 +34,9 @@
   <.header>
     Assets
     <.table rows={@assets} id="assets">
-      <:col :let={asset} label="Name"><a href={asset.url}>{asset.asset.name}</a></:col>
+      <:col :let={asset} label="Name">
+        <a href={asset.url}>{asset.asset.path}/{asset.asset.name}</a>
+      </:col>
     </.table>
   </.header>
 </Layouts.app>

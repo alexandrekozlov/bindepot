@@ -36,7 +36,7 @@ defmodule Bindepot.Core.RepositoryTest do
       [repo] = Repositories.all()
       Repositories.delete(repo.id)
       [%{name: name}] = Repositories.all_deleted()
-      assert name =~ ~r/\$deleted_generic_.+/
+      assert name =~ ~r/generic\$.+/
     end
   end
 
@@ -107,7 +107,7 @@ defmodule Bindepot.Core.RepositoryTest do
                Assets.put(
                  repository.id,
                  "asset.bin",
-                 "asset.bin",
+                 "/",
                  Path.expand("./test/data/artifact.txt")
                )
 
@@ -123,7 +123,7 @@ defmodule Bindepot.Core.RepositoryTest do
                Assets.put(
                  repository.id,
                  "asset.bin",
-                 "asset.bin",
+                 "/",
                  Path.expand("./test/data/artifact.txt")
                )
 
@@ -131,7 +131,7 @@ defmodule Bindepot.Core.RepositoryTest do
                Assets.put(
                  repository.id,
                  "/other/asset.bin",
-                 "/other/asset.bin",
+                 "/other",
                  Path.expand("./test/data/artifact.txt")
                )
     end
@@ -141,7 +141,7 @@ defmodule Bindepot.Core.RepositoryTest do
                Assets.put(
                  repository.id,
                  "asset.bin",
-                 "asset.bin",
+                 "/",
                  Path.expand("./test/data/artifact.txt")
                )
 
@@ -149,7 +149,7 @@ defmodule Bindepot.Core.RepositoryTest do
                Assets.put(
                  repository.id,
                  "asset.bin",
-                 "asset.bin",
+                 "/",
                  Path.expand("./test/data/artifact.txt")
                )
     end

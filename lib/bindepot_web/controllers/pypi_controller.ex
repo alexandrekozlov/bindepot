@@ -4,6 +4,14 @@ defmodule BindepotWeb.PypiController do
   alias Bindepot.Core.Repositories
   alias Bindepot.Core.Assets
 
+  def simple_upload(conn, params) do
+    IO.inspect(params)
+
+    conn
+    |> put_resp_content_type("application/json")
+    |> send_resp(200, Jason.encode!(%{ok: true}))
+  end
+
   def legacy_upload(conn, params) do
     # enforce auth
     # use Repository.create_upload/2 to save uploaded file and metadata

@@ -19,50 +19,14 @@ defmodule Bindepot.Core.Assets do
 
   def put(repository_id, name, path, source_path) when is_binary(source_path) do
     id = UUID.uuid4()
-    {:ok, _status, _dest_file, size, hashes} = store_file(source_path)
-
-    repository = Repositories.get(repository_id)
-
-    changeset =
-      Ecto.build_assoc(repository, :assets)
-      |> Asset.changeset(%{
-        id: id,
-        name: name,
-        path: path,
-        size: size,
-        md5: Map.get(hashes, :md5),
-        sha1: Map.get(hashes, :sha),
-        sha256: Map.get(hashes, :sha256)
-      })
-
-    Repo.insert(changeset,
-      on_conflict: [set: [name: name]],
-      conflict_target: :name
-    )
+    {:ok, file_info} = store_file(source_path)
+    insert_asset(repository_id, id, name, path, file_info)
   end
 
-  def put(repository_id, name, path, stream) do
+  def put_stream(repository_id, name, path, stream) do
     id = UUID.uuid4()
-    {:ok, _status, _dest_file, size, hashes} = store_stream(stream, id)
-
-    repository = Repositories.get(repository_id)
-
-    changeset =
-      Ecto.build_assoc(repository, :assets)
-      |> Asset.changeset(%{
-        id: id,
-        name: name,
-        path: path,
-        size: size,
-        md5: Map.get(hashes, :md5),
-        sha1: Map.get(hashes, :sha),
-        sha256: Map.get(hashes, :sha256)
-      })
-
-    Repo.insert(changeset,
-      on_conflict: [set: [name: name]],
-      conflict_target: :name
-    )
+    {:ok, file_info} = store_stream(stream, id)
+    insert_asset(repository_id, id, name, path, file_info)
   end
 
   def get(%Asset{} = asset) do
@@ -76,6 +40,27 @@ defmodule Bindepot.Core.Assets do
     ass = Repo.preload(asset, [:repository])
     prefix = String.slice(ass.sha256, 0, 2)
     {:ok, store_path() |> Path.join(prefix) |> Path.join(ass.sha256)}
+  end
+
+  defp insert_asset(repository_id, id, name, path, file_info) do
+    repository = Repositories.get(repository_id)
+
+    changeset =
+      Ecto.build_assoc(repository, :assets)
+      |> Asset.changeset(%{
+        id: id,
+        name: name,
+        path: path,
+        size: file_info.size,
+        md5: Map.get(file_info.hashes, :md5),
+        sha1: Map.get(file_info.hashes, :sha),
+        sha256: Map.get(file_info.hashes, :sha256)
+      })
+
+    Repo.insert(changeset,
+      on_conflict: [set: [name: name]],
+      conflict_target: :name
+    )
   end
 
   defp store_file(file_path) do
@@ -117,11 +102,12 @@ defmodule Bindepot.Core.Assets do
 
     %{size: size} = File.stat!(dest_file)
 
-    {:ok, status, dest_file, size, hashes}
+    {:ok, %{status: status, dest_file: dest_file, size: size, hashes: hashes}}
   end
 
   defp write_file(stream, file_path) do
-    File.open(file_path, [:write, :binary], &compute_hash(stream, &1))
+    {:ok, res} = File.open(file_path, [:write, :binary], &compute_hash(stream, &1))
+    res
   end
 
   defp compute_hash(stream, io \\ nil) do
