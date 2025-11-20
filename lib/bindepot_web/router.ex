@@ -14,8 +14,8 @@ defmodule BindepotWeb.Router do
     plug :accepts, ["json"]
   end
 
-  pipeline :simple do
-    plug :accepts, ["html"]
+  pipeline :repo_io do
+    plug BindepotWeb.Plugs.GetRepository
   end
 
   scope "/", BindepotWeb do
@@ -33,10 +33,11 @@ defmodule BindepotWeb.Router do
     end
   end
 
-  scope "/repositories", BindepotWeb do
-    pipe_through :simple
+  scope "/repositories", BindepotWeb.Api do
+    pipe_through :repo_io
 
-    post "/:repo/*path", UploadController, :upload
+    get "/:repo/*path", RepositoryIoController, :download
+    post "/:repo/*path", RepositoryIoController, :upload
   end
 
   scope "/api", BindepotWeb.Api do
