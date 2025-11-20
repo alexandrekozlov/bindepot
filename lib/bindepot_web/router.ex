@@ -36,8 +36,8 @@ defmodule BindepotWeb.Router do
   scope "/repositories", BindepotWeb.Api do
     pipe_through :repo_io
 
-    get "/:repo/*path", RepositoryIoController, :download
-    post "/:repo/*path", RepositoryIoController, :upload
+    get "/:repo/*path", RepositoryIoController, :handle_request
+    post "/:repo/*path", RepositoryIoController, :handle_request
   end
 
   scope "/api", BindepotWeb.Api do

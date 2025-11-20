@@ -9,39 +9,39 @@ defmodule BindepotWeb.Api.RepositoryIoController do
   alias BindepotWeb.Api.AssetController
   alias BindepotWeb.Api.PypiController
 
-  # TODO: May be move all logic into a plug and have custom router macros?
-
-  def upload(conn, params) do
+  def handle_request(%{method: method} = conn, params) do
     IO.inspect(params)
 
     repo = conn.assigns.repository
 
     case repo.package_type do
       "generic" ->
-        AssetController.upload(conn, params)
+        case method do
+          "POST" ->
+            AssetController.upload(conn, params)
+
+          "GET" ->
+            AssetController.download(conn, params)
+
+          _ ->
+            conn
+            |> put_resp_content_type("text/plain")
+            |> send_resp(405, "Method Not Allowed")
+        end
 
       "pypi" ->
-        PypiController.upload(conn, params)
+        case method do
+          "POST" ->
+            PypiController.upload(conn, params)
 
-      _ ->
-        conn
-        |> put_resp_content_type("text/plain")
-        |> send_resp(501, "package type '#{repo.package_type}' not implemented")
-    end
-  end
+          "GET" ->
+            PypiController.download(conn, params)
 
-  def download(conn, params) do
-    IO.inspect(conn)
-    IO.inspect(params)
-
-    repo = conn.assigns.repository
-
-    case repo.package_type do
-      "generic" ->
-        AssetController.download(conn, params)
-
-      "pypi" ->
-        PypiController.download(conn, params)
+          _ ->
+            conn
+            |> put_resp_content_type("text/plain")
+            |> send_resp(405, "Method Not Allowed")
+        end
 
       _ ->
         conn

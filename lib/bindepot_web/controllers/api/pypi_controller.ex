@@ -3,8 +3,8 @@ defmodule BindepotWeb.Api.PypiController do
 
   alias Bindepot.Core.Assets
 
-    # Hop-by-hop headers that should NOT be forwarded
-    @excluded_headers ~w(
+  # Hop-by-hop headers that should NOT be forwarded
+  @excluded_headers ~w(
       connection
       keep-alive
       proxy-authenticate
@@ -15,7 +15,6 @@ defmodule BindepotWeb.Api.PypiController do
       upgrade
       host
     )
-
 
   def upload(conn, %{"path" => ["legacy"]} = params) do
     repo = conn.assigns.repository
@@ -82,7 +81,9 @@ defmodule BindepotWeb.Api.PypiController do
       "<!DOCTYPE html>\n<html>\n<body>" <>
         (assets
          |> Enum.reduce([], fn asset, b ->
-           a = "<a href=\"#{asset.path}/#{asset.name}#sha256=#{asset.sha256}\">#{asset.name}</a><br/>"
+           a =
+             "<a href=\"#{asset.path}/#{asset.name}#sha256=#{asset.sha256}\">#{asset.name}</a><br/>"
+
            [a | b]
          end)
          |> Enum.reverse()
@@ -138,5 +139,4 @@ defmodule BindepotWeb.Api.PypiController do
     |> Enum.reject(fn {k, _} -> k in @excluded_headers end)
     |> Enum.reduce(conn, fn {k, v}, c -> put_resp_header(c, k, v) end)
   end
-
 end

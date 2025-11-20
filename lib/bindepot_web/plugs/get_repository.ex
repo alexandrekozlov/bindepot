@@ -1,5 +1,4 @@
 defmodule BindepotWeb.Plugs.GetRepository do
-
   import Plug.Conn
   alias Bindepot.Core.Repositories
 
@@ -7,6 +6,7 @@ defmodule BindepotWeb.Plugs.GetRepository do
 
   def call(%Plug.Conn{params: %{"repo" => repo_key}} = conn, _opts) do
     repository = Repositories.get_by_name(repo_key)
+
     case repository do
       nil ->
         conn

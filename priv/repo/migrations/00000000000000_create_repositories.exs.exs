@@ -2,7 +2,7 @@ defmodule Bindepot.Repo.Migrations.CreateRepositories do
   use Ecto.Migration
 
   def change do
-    create table(:repositories, primary_key: false) do
+    create table("repositories", primary_key: false) do
       add :id, :uuid, primary_key: true, null: false
       add :name, :string, null: false
       add :type, :string, null: false
@@ -14,17 +14,17 @@ defmodule Bindepot.Repo.Migrations.CreateRepositories do
       add :deleted_at, :naive_datetime_usec
     end
 
-    create unique_index(:repositories, [:name])
-    create index(:repositories, [:type])
-    create index(:repositories, [:deleted_at])
+    create unique_index("repositories", [:name])
+    create index("repositories", [:type])
+    create index("repositories", [:deleted_at])
 
-    create table(:filestores, primary_key: false) do
+    create table("filestores", primary_key: false) do
       add :name, :string, primary_key: true, null: false
       add :provider, :string, null: false
       add :configuration, :map, default: %{}, null: false
     end
 
-    create table(:assets, primary_key: false) do
+    create table("assets", primary_key: false) do
       add :id, :uuid, primary_key: true, null: false
       add :name, :string, null: false
       add :path, :string, null: false
@@ -35,7 +35,7 @@ defmodule Bindepot.Repo.Migrations.CreateRepositories do
       add :sha256, :string, null: true
 
       add :repository_id,
-          references(:repositories,
+          references("repositories",
             column: :id,
             type: :uuid,
             on_delete: :delete_all,
@@ -46,7 +46,7 @@ defmodule Bindepot.Repo.Migrations.CreateRepositories do
       add :accessed_at, :naive_datetime_usec
     end
 
-    create unique_index(:assets, :name)
+    create unique_index("assets", :name)
 
     create table("packages", primary_key: false) do
       add :id, :uuid, primary_key: true, null: false
@@ -61,7 +61,7 @@ defmodule Bindepot.Repo.Migrations.CreateRepositories do
 
     create table("assets_versions", primary_key: false) do
       add :asset_id,
-          references(:assets,
+          references("assets",
             column: :id,
             type: :uuid,
             on_delete: :delete_all
@@ -69,7 +69,7 @@ defmodule Bindepot.Repo.Migrations.CreateRepositories do
           null: false
 
       add :version_id,
-          references(:versions,
+          references("versions",
             column: :id,
             type: :uuid,
             on_delete: :delete_all
@@ -79,6 +79,6 @@ defmodule Bindepot.Repo.Migrations.CreateRepositories do
       timestamps()
     end
 
-    create unique_index(:assets_versions, [:asset_id, :version_id])
+    create unique_index("assets_versions", [:asset_id, :version_id])
   end
 end
