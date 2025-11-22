@@ -2,6 +2,7 @@ defmodule Bindepot.Core.Repository do
   alias Ecto.Changeset
   alias Bindepot.Core.Repository
   alias Bindepot.Core.Asset
+  alias Bindepot.Core.Node
 
   use Ecto.Schema
   import Ecto.Query
@@ -17,6 +18,7 @@ defmodule Bindepot.Core.Repository do
     field :url, :string
     field :repositories, {:array, :string}
 
+    has_many :nodes, Node
     has_many :assets, Asset
 
     timestamps()

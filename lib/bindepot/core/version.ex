@@ -4,6 +4,7 @@ defmodule Bindepot.Core.Version do
 
   alias Bindepot.Core.Package
   alias Bindepot.Core.Asset
+  alias Bindepot.Core.DistFile
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
@@ -12,6 +13,8 @@ defmodule Bindepot.Core.Version do
     field :version, :string
 
     belongs_to :package, Package
+
+    has_many :dist_files, DistFile
 
     many_to_many :assets, Asset, join_through: "assets_versions"
   end
