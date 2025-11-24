@@ -3,6 +3,18 @@ defmodule BindepotWeb.Api.PypiController do
 
   alias Bindepot.Core.Assets
 
+# https://peps.python.org/pep-0425/
+# https://peps.python.org/pep-0503/
+# https://peps.python.org/pep-0691/
+# https://peps.python.org/pep-0700/
+# https://peps.python.org/pep-0721/
+# https://packaging.python.org/en/latest/specifications/source-distribution-format/#sdist-archive-features
+# https://packaging.python.org/en/latest/specifications/
+# https://packaging.python.org/en/latest/specifications/section-package-indices/
+# https://docs.pypi.org/api/index-api/
+#
+
+
   # Hop-by-hop headers that should NOT be forwarded
   @excluded_headers ~w(
       connection
