@@ -28,11 +28,15 @@ defmodule Bindepot.Core.Blobs do
 
     case Repo.one(from b in Blob, where: b.sha256 == ^sha256) do
       nil ->
-        Repo.insert(new)
+        new
+        |> Repo.insert()
+        |> then(&{elem(&1, 0), elem(&1, 1), :new})
 
       existing_blob ->
-        Blob.changeset(existing_blob, blob)
+        existing_blob
+        |> Blob.changeset(blob)
         |> Repo.update()
+        |> then(&{elem(&1, 0), elem(&1, 1), :existing})
     end
   end
 end

@@ -3,95 +3,138 @@ defmodule Bindepot.Core.NodesTest do
 
   alias Bindepot.Core.Nodes
 
-  test "gen_nodes_recursively" do
-    Nodes.nodes_from_path([]) |> IO.inspect()
-    Nodes.nodes_from_path(["A"]) |> IO.inspect()
-    Nodes.nodes_from_path(["A", "B", "C", "D"]) |> IO.inspect()
+  describe "nodes_from_path" do
+    test "empty path should return no nodes" do
+      assert [] = Nodes.nodes_from_path("")
+    end
+
+    test "root path should return no nodes" do
+      assert [] = Nodes.nodes_from_path("/")
+    end
+
+    test "single root element returns one node" do
+      assert [{"/", "A"}] = Nodes.nodes_from_path("/A")
+    end
+
+    test "two elements return two nodes in reverse order" do
+      assert [{"/A", "B"}, {"/", "A"}] = Nodes.nodes_from_path("/A/B")
+    end
+
+    test "three elements return three nodes in reverse order" do
+      assert [{"/A/B", "C"}, {"/A", "B"}, {"/", "A"}] = Nodes.nodes_from_path("/A/B/C")
+    end
+
+    test "relative paths treated as absolute path" do
+      assert [{"/A/B", "C"}, {"/A", "B"}, {"/", "A"}] = Nodes.nodes_from_path("A/B/C")
+    end
+
+    test "empty elements ignored" do
+      assert [{"/A/B", "C"}, {"/A", "B"}, {"/", "A"}] = Nodes.nodes_from_path("/A//B/C")
+    end
+
+    test "trailing separator ignored" do
+      assert [{"/A/B", "C"}, {"/A", "B"}, {"/", "A"}] = Nodes.nodes_from_path("/A/B/C/")
+    end
   end
 
-  test "generate_nodes directory" do
-    assert [
-             %{path: "/", name: "A", type: 0, repository_id: 123},
-             %{path: "/A", name: "B", type: 0, repository_id: 123},
-             %{path: "/A/B", name: "C", type: 0, repository_id: 123},
-             %{path: "/A/B/C", name: "D", type: 0, repository_id: 123}
-           ] =
-             Nodes.generate_nodes(123, "/A/B/C/D")
-  end
+  # test "create_file" do
+  #   Nodes.create_file(
+  #     UUID.string_to_binary!("00000000-0000-0000-0000-000000000001"),
+  #     "/A/B/C",
+  #     UUID.string_to_binary!("00000000-0000-0000-0000-000000000042")
+  #   )
+  #   |> IO.inspect()
+  # end
 
-  test "generate_nodes file" do
-    assert [
-             %{path: "/", name: "A", type: 0, repository_id: 123},
-             %{path: "/A", name: "B", type: 0, repository_id: 123},
-             %{path: "/A/B", name: "C", type: 0, repository_id: 123},
-             %{path: "/A/B/C", name: "D", type: 0, repository_id: 123, blob_id: 42}
-           ] =
-             Nodes.generate_nodes(123, "/A/B/C/D", 42)
-  end
+  # test "gen_nodes_recursively" do
+  #   Nodes.nodes_from_path([]) |> IO.inspect()
+  #   Nodes.nodes_from_path(["A"]) |> IO.inspect()
+  #   Nodes.nodes_from_path(["A", "B", "C", "D"]) |> IO.inspect()
+  # end
 
-  test "generate_nodes empty path" do
-    assert [] =
-             Nodes.generate_nodes(123, "")
-  end
+  # test "generate_nodes directory" do
+  #   assert [
+  #            %{path: "/", name: "A", type: 0, repository_id: 123},
+  #            %{path: "/A", name: "B", type: 0, repository_id: 123},
+  #            %{path: "/A/B", name: "C", type: 0, repository_id: 123},
+  #            %{path: "/A/B/C", name: "D", type: 0, repository_id: 123}
+  #          ] =
+  #            Nodes.generate_nodes(123, "/A/B/C/D")
+  # end
 
-  test "generate_nodes empty path with blob" do
-    assert [] =
-             Nodes.generate_nodes(123, "", 42)
-  end
+  # test "generate_nodes file" do
+  #   assert [
+  #            %{path: "/", name: "A", type: 0, repository_id: 123},
+  #            %{path: "/A", name: "B", type: 0, repository_id: 123},
+  #            %{path: "/A/B", name: "C", type: 0, repository_id: 123},
+  #            %{path: "/A/B/C", name: "D", type: 0, repository_id: 123, blob_id: 42}
+  #          ] =
+  #            Nodes.generate_nodes(123, "/A/B/C/D", 42)
+  # end
 
-  test "generate_nodes root path" do
-    assert [] =
-             Nodes.generate_nodes(123, "/")
-  end
+  # test "generate_nodes empty path" do
+  #   assert [] =
+  #            Nodes.generate_nodes(123, "")
+  # end
 
-  test "generate_nodes root path with blob" do
-    assert [] =
-             Nodes.generate_nodes(123, "/", 42)
-  end
+  # test "generate_nodes empty path with blob" do
+  #   assert [] =
+  #            Nodes.generate_nodes(123, "", 42)
+  # end
 
-  test "generate_nodes directory at root" do
-    assert [
-             %{path: "/", name: "A", type: 0, repository_id: 123}
-           ] =
-             Nodes.generate_nodes(123, "/A")
-  end
+  # test "generate_nodes root path" do
+  #   assert [] =
+  #            Nodes.generate_nodes(123, "/")
+  # end
 
-  test "generate_nodes file at root" do
-    assert [
-             %{path: "/", name: "A", type: 0, repository_id: 123, blob_id: 42}
-           ] =
-             Nodes.generate_nodes(123, "/A", 42)
-  end
+  # test "generate_nodes root path with blob" do
+  #   assert [] =
+  #            Nodes.generate_nodes(123, "/", 42)
+  # end
 
-  test "generate_nodes single element relative directory" do
-    assert [
-             %{path: "/", name: "A", type: 0, repository_id: 123}
-           ] =
-             Nodes.generate_nodes(123, "A")
-  end
+  # test "generate_nodes directory at root" do
+  #   assert [
+  #            %{path: "/", name: "A", type: 0, repository_id: 123}
+  #          ] =
+  #            Nodes.generate_nodes(123, "/A")
+  # end
 
-  test "generate_nodes single element relative file" do
-    assert [
-             %{path: "/", name: "A", type: 0, repository_id: 123, blob_id: 42}
-           ] =
-             Nodes.generate_nodes(123, "A", 42)
-  end
+  # test "generate_nodes file at root" do
+  #   assert [
+  #            %{path: "/", name: "A", type: 0, repository_id: 123, blob_id: 42}
+  #          ] =
+  #            Nodes.generate_nodes(123, "/A", 42)
+  # end
 
-  test "mkdir relative path to directory" do
-    assert [
-             %{path: "/", name: "A", type: 0, repository_id: 123},
-             %{path: "/A", name: "B", type: 0, repository_id: 123},
-             %{path: "/A/B", name: "C", type: 0, repository_id: 123}
-           ] =
-             Nodes.generate_nodes(123, "A/B/C")
-  end
+  # test "generate_nodes single element relative directory" do
+  #   assert [
+  #            %{path: "/", name: "A", type: 0, repository_id: 123}
+  #          ] =
+  #            Nodes.generate_nodes(123, "A")
+  # end
 
-  test "mkdir relative path to file" do
-    assert [
-             %{path: "/", name: "A", type: 0, repository_id: 123},
-             %{path: "/A", name: "B", type: 0, repository_id: 123},
-             %{path: "/A/B", name: "C", type: 0, repository_id: 123, blob_id: 42}
-           ] =
-             Nodes.generate_nodes(123, "A/B/C", 42)
-  end
+  # test "generate_nodes single element relative file" do
+  #   assert [
+  #            %{path: "/", name: "A", type: 0, repository_id: 123, blob_id: 42}
+  #          ] =
+  #            Nodes.generate_nodes(123, "A", 42)
+  # end
+
+  # test "mkdir relative path to directory" do
+  #   assert [
+  #            %{path: "/", name: "A", type: 0, repository_id: 123},
+  #            %{path: "/A", name: "B", type: 0, repository_id: 123},
+  #            %{path: "/A/B", name: "C", type: 0, repository_id: 123}
+  #          ] =
+  #            Nodes.generate_nodes(123, "A/B/C")
+  # end
+
+  # test "mkdir relative path to file" do
+  #   assert [
+  #            %{path: "/", name: "A", type: 0, repository_id: 123},
+  #            %{path: "/A", name: "B", type: 0, repository_id: 123},
+  #            %{path: "/A/B", name: "C", type: 0, repository_id: 123, blob_id: 42}
+  #          ] =
+  #            Nodes.generate_nodes(123, "A/B/C", 42)
+  # end
 end

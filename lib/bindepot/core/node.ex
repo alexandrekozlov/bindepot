@@ -34,7 +34,19 @@ defmodule Bindepot.Core.Node do
       :blob_id
     ])
     |> assoc_constraint(:repository)
-    |> assoc_constraint(:blob)
     |> validate_required([:type, :path, :name])
+    |> validate_file_node()
+  end
+
+  @doc """
+    Checks that file node (type: 1), has `blob_id` value.
+  """
+  defp validate_file_node(changeset) do
+    if fetch_field!(changeset, :type) == 1 and
+         is_nil(fetch_field!(changeset, :blob_id)) do
+      add_error(changeset, :blob_id, "blob required for file node")
+    else
+      changeset
+    end
   end
 end

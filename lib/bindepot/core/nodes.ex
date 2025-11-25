@@ -1,41 +1,24 @@
 defmodule Bindepot.Core.Nodes do
+  alias Bindepot.Repo
   alias Bindepot.Core.Node
 
-  def mkdir(repository_id, path) do
-    changesets =
-      path
-      |> String.split("/", trim: true)
-      |> nodes_from_path()
-      |> Enum.scan(nil, fn n, _ ->
-        %{type: 0, path: elem(n, 0), name: elem(n, 1), repository_id: repository_id}
-      end)
-      |> Enum.reverse()
-      |> Enum.scan(nil, fn n, _ ->
-        Node.changeset(%Node{}, n)
-      end)
-
-    changesets
+  # TODO: Cannot just insert as the node may already exist
+  def create_directory(repository_id, path) do
+    create_node_entries(path, repository_id)
+    |> Enum.scan(nil, fn n, _a -> %Node{} |> Node.changeset(n) end)
+    |> Enum.reverse()
+    |> Enum.each(&Repo.insert(&1))
   end
 
-  def generate_nodes(repository_id, path, blob_id \\ nil) do
-    nodes =
-      path
-      |> String.split("/", trim: true)
-      |> nodes_from_path()
-      |> Enum.scan(nil, fn n, _a ->
-        %{type: 0, path: elem(n, 0), name: elem(n, 1), repository_id: repository_id}
-      end)
-
-    case nodes do
-      [] ->
-        []
-
-      [last | rest] when is_nil(blob_id) ->
-        [last | rest] |> Enum.reverse()
-
-      [last | rest] ->
-        [Map.put(last, :blob_id, blob_id) | rest] |> Enum.reverse()
-    end
+  def create_file(repository_id, path, blob_id) do
+    create_node_entries(path, repository_id)
+    |> Enum.scan(nil, fn n, _a -> %Node{} |> Node.changeset(n) end)
+    |> then(fn [file_node | rest] ->
+      [%{file_node | type: 1} |> Map.put(:blob_id, blob_id) | rest]
+    end)
+    |> Enum.scan(nil, fn n, _a -> %Node{} |> Node.changeset(n) end)
+    |> Enum.reverse()
+    |> Enum.each(&Repo.insert(&1))
   end
 
   @doc """
@@ -45,7 +28,21 @@ defmodule Bindepot.Core.Nodes do
     child to parent, which makes it convenient to modify the last path element
     depending on whether it is a file or a directory.
   """
-  def nodes_from_path(path, parent \\ nil, nodes \\ []) do
+  def nodes_from_path(path) do
+    path
+    |> String.split("/", trim: true)
+    |> do_nodes_from_path()
+  end
+
+  defp create_node_entries(path, repository_id) do
+    path
+    |> nodes_from_path()
+    |> Enum.scan(nil, fn n, _a ->
+      %{type: 0, path: elem(n, 0), name: elem(n, 1), repository_id: repository_id}
+    end)
+  end
+
+  defp do_nodes_from_path(path, parent \\ nil, nodes \\ []) do
     cond do
       # Empty path
       path == [] ->
@@ -57,7 +54,7 @@ defmodule Bindepot.Core.Nodes do
 
       # first element
       is_nil(parent) ->
-        nodes_from_path(tl(path), "/" <> hd(path), [{"/", hd(path)} | nodes])
+        do_nodes_from_path(tl(path), "/" <> hd(path), [{"/", hd(path)} | nodes])
 
       # last element
       length(path) == 1 ->
@@ -65,7 +62,7 @@ defmodule Bindepot.Core.Nodes do
 
       # any other element
       true ->
-        nodes_from_path(tl(path), parent <> "/" <> hd(path), [{parent, hd(path)} | nodes])
+        do_nodes_from_path(tl(path), parent <> "/" <> hd(path), [{parent, hd(path)} | nodes])
     end
   end
 end
