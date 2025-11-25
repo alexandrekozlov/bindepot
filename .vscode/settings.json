@@ -1,0 +1,17 @@
+{
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/.DS_Store": true,
+        "**/Thumbs.db": true
+    },
+    "cSpell.words": [
+        "Bindepot",
+        "keydelete"
+    ],
+    "testing.coverageToolbarEnabled": true,
+    "coverage-gutters.coverageReportFileName": "cover/excoveralls.html",
+    "coverage-gutters.showLineCoverage": false,
+    "coverage-gutters.showRulerCoverage": false
+}

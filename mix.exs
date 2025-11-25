@@ -11,7 +11,11 @@ defmodule Bindepot.MixProject do
       aliases: aliases(),
       deps: deps(),
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
-      listeners: [Phoenix.CodeReloader]
+      listeners: [Phoenix.CodeReloader],
+      test_coverage: [tool: ExCoveralls, export: "cov"],
+      preferred_cli_env: [
+        coveralls: :test
+      ]
     ]
   end
 
@@ -66,7 +70,8 @@ defmodule Bindepot.MixProject do
       {:bandit, "~> 1.5"},
       {:uuid, "~> 1.1"},
       {:temp, "~> 0.4.9"},
-      {:finch, "~> 0.20.0"}
+      {:finch, "~> 0.20.0"},
+      {:excoveralls, "~> 0.18", only: [:test] },
     ]
   end
 

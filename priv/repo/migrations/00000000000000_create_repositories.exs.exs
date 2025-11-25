@@ -7,9 +7,11 @@ defmodule Bindepot.Repo.Migrations.CreateRepositories do
       add :size, :integer, null: false
       add :md5, :string
       add :sha1, :string
-      add :sha256, :string
+      add :sha256, :string, null: false
       add :blake2, :string
     end
+
+    create unique_index("blobs", [:sha256], nulls_distinct: true)
 
     create table("repositories", primary_key: false) do
       add :id, :uuid, primary_key: true, null: false

@@ -1,0 +1,27 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "shell",
+			"command": ["mix", "coveralls.cobertura"],
+			"options": {
+				"env": { "MIX_ENV": "test" }
+			},
+			"group": "test",
+			"label": "mix: Run tests with coveralls",
+			"problemMatcher": [
+				"$mixCompileError",
+				"$mixCompileWarning",
+				"$mixTestFailure"
+			],
+			"presentation": {
+				"echo": false,
+				"reveal": "silent",
+				"focus": false,
+				"panel": "dedicated",
+				"showReuseMessage": true,
+				"clear": false
+			}
+		}
+	]
+}
