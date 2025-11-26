@@ -59,7 +59,7 @@ defmodule Bindepot.Core.Assets do
       %{
         size: file_size,
         md5: Map.get(hashes, :md5),
-        sha1: Map.get(hashes, :sha1),
+        sha1: Map.get(hashes, :sha),
         sha256: sha256,
         blake2: Map.get(hashes, :blake2b)
       }
