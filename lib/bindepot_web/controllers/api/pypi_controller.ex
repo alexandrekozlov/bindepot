@@ -41,6 +41,7 @@ defmodule BindepotWeb.Api.PypiController do
       "/"
       |> Path.join(package_name)
       |> Path.join(package_version)
+      |> Path.join(asset_filename)
 
     # TODO: Problem here that we put the asset in, but only then can verify
     # hash. Yes, we can delete the invalid asset, but that is a problem that
@@ -50,7 +51,7 @@ defmodule BindepotWeb.Api.PypiController do
     #   2. Provide validation info (expected hashes) as an extra parameter
     #   3. (preferred) Provide a function parameter that is called after hash is
     #      computed, but before file is stored and recorded in DB.
-    {:ok, asset_info} = Assets.put(repo.id, asset_filename, store_path, temp_file)
+    {:ok, asset_info} = Assets.put(repo.id, store_path, temp_file)
     resp = BindepotWeb.Api.Utils.sanitize_schema(asset_info)
     IO.inspect(resp)
 

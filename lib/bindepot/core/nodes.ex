@@ -2,6 +2,10 @@ defmodule Bindepot.Core.Nodes do
   alias Bindepot.Repo
   alias Bindepot.Core.Node
 
+  def get_files(repository_id) do
+    Repo.all_by(Node, repository_id: repository_id, type: 1)
+  end
+
   def create_directory(repository_id, path) do
     path
     |> create_node_entries(repository_id)

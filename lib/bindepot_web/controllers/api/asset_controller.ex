@@ -1,11 +1,9 @@
 defmodule BindepotWeb.Api.AssetController do
   use BindepotWeb, :controller
 
-  import Ecto.Query
   alias Bindepot.Core.Asset
   alias Bindepot.Core.Assets
   alias Bindepot.Core.Repositories
-  alias Bindepot.Core.Repository
 
   def list(conn, %{"repo" => repo_key} = _params) do
     repo = Repositories.get_by_name(repo_key)
@@ -34,13 +32,11 @@ defmodule BindepotWeb.Api.AssetController do
       |> Path.join()
       |> Path.expand("/")
 
-    asset_dir = Path.dirname(rel_artifact_path)
-    asset_file = Path.basename(rel_artifact_path)
-
     stream = request_body_stream(conn)
-    {:ok, asset} = Assets.put_stream(repo.id, asset_file, asset_dir, stream)
+    {:ok, asset} = Assets.put_stream(repo.id, rel_artifact_path, stream)
+    x = elem(List.first(asset), 1) |> IO.inspect(asset)
 
-    resp = sanitize_schema(asset)
+    resp = sanitize_schema(x)
 
     conn
     |> put_resp_content_type("application/json")
@@ -53,14 +49,8 @@ defmodule BindepotWeb.Api.AssetController do
       |> Path.join()
       |> Path.expand("/")
 
-    q =
-      from a in Asset,
-        join: r in Repository,
-        on: r.id == a.repository_id,
-        where: r.name == ^repo_name,
-        where: a.name == ^rel_artifact_path
-
-    {:ok, file_path} = Assets.get(q)
+    repo = Repositories.get_by_name(repo_name)
+    {:ok, file_path} = Assets.get(repo.id, rel_artifact_path)
 
     send_download(conn, {:file, file_path},
       filename: Path.basename(rel_artifact_path),
@@ -123,7 +113,7 @@ defmodule BindepotWeb.Api.AssetController do
     Enum.map(list, f)
   end
 
-  defp sanitize_schema(%Asset{} = repo) do
+  defp sanitize_schema(repo) when is_struct(repo) do
     repo
     |> Map.from_struct()
     |> remove_not_loaded_associations()

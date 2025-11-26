@@ -1,66 +1,35 @@
 defmodule Bindepot.Core.Assets do
   import Ecto.Query, warn: false
 
-  alias Bindepot.Core.Repositories
   alias Bindepot.Repo
-  alias Bindepot.Core.Asset
+  alias Bindepot.Core.Nodes
+  alias Bindepot.Core.Blobs
   alias Bindepot.Core.Repository
   alias Bindepot.Core.Hasher
 
   require Logger
 
-  def all() do
-    Repo.all(from a in Asset, preload: :repository)
-  end
-
   def all(%Repository{} = repo) do
-    Repo.all(from a in Asset, where: a.repository_id == ^repo.id, preload: :repository)
+    Nodes.get_files(repo.id)
   end
 
-  def put(repository_id, name, path, source_path) when is_binary(source_path) do
-    id = UUID.uuid4()
-    {:ok, file_info} = store_file(source_path)
-    insert_asset(repository_id, id, name, path, file_info)
+  def put(repository_id, path, source_path) when is_binary(source_path) do
+    {:ok, _status, blob, _dest} = store_file(source_path)
+    Nodes.create_file(repository_id, path, blob.id)
   end
 
-  def put_stream(repository_id, name, path, stream) do
-    id = UUID.uuid4()
-    {:ok, file_info} = store_stream(stream, id)
-    insert_asset(repository_id, id, name, path, file_info)
+  def put_stream(repository_id, path, stream) do
+    {:ok, _status, blob, _dest} = store_stream(stream)
+    Nodes.create_file(repository_id, path, blob.id)
   end
 
-  def get(%Asset{} = asset) do
-    ass = Repo.preload(asset, [:repository])
-    prefix = String.slice(ass.sha256, 0, 2)
-    {:ok, store_path() |> Path.join(prefix) |> Path.join(ass.sha256)}
-  end
-
-  def get(%Ecto.Query{} = q) do
-    asset = Repo.one!(q)
-    ass = Repo.preload(asset, [:repository])
-    prefix = String.slice(ass.sha256, 0, 2)
-    {:ok, store_path() |> Path.join(prefix) |> Path.join(ass.sha256)}
-  end
-
-  defp insert_asset(repository_id, id, name, path, file_info) do
-    repository = Repositories.get(repository_id)
-
-    changeset =
-      Ecto.build_assoc(repository, :assets)
-      |> Asset.changeset(%{
-        id: id,
-        name: name,
-        path: path,
-        size: file_info.size,
-        md5: Map.get(file_info.hashes, :md5),
-        sha1: Map.get(file_info.hashes, :sha),
-        sha256: Map.get(file_info.hashes, :sha256)
-      })
-
-    Repo.insert(changeset,
-      on_conflict: [set: [name: name]],
-      conflict_target: :name
-    )
+  def get(repository_id, path) do
+    p = Path.dirname(path)
+    n = Path.basename(path)
+    node = Repo.get_by(Node, repository_id: repository_id, path: p, name: n, type: 1)
+    blob = Repo.get(Blob, node.blob_id)
+    prefix = String.slice(blob.sha256, 0, 2)
+    {:ok, store_path() |> Path.join(prefix) |> Path.join(blob.sha256)}
   end
 
   defp store_file(file_path) do
@@ -69,40 +38,57 @@ defmodule Bindepot.Core.Assets do
       File.stream!(file_path, 4096)
       |> compute_hash()
 
-    store_file(file_path, hashes)
+    store_blob(file_path, hashes)
   end
 
-  defp store_stream(stream, id) do
+  defp store_stream(stream) do
     temp_dir = Path.join(store_path(), "temp")
     File.mkdir_p!(temp_dir)
 
-    temp_file = Path.join(temp_dir, id)
+    temp_file = Path.join(temp_dir, UUID.uuid4())
     hashes = write_file(stream, temp_file)
 
-    store_file(temp_file, hashes)
+    store_blob(temp_file, hashes)
   end
 
-  defp store_file(source_file, hashes) do
+  defp store_blob(source_file, hashes) do
+    %{size: file_size} = File.stat!(source_file)
     sha256 = Map.get(hashes, :sha256)
+
+    blob =
+      %{
+        size: file_size,
+        md5: Map.get(hashes, :md5),
+        sha1: Map.get(hashes, :sha1),
+        sha256: sha256,
+        blake2: Map.get(hashes, :blake2b)
+      }
+      |> Blobs.put()
+
     prefix = String.slice(sha256, 0, 2)
-
     dest_dir = Path.join(store_path(), prefix)
-    File.mkdir_p!(dest_dir)
-
     dest_file = Path.join(dest_dir, sha256)
 
-    status =
-      if File.exists?(dest_file) do
-        :exists
-      else
+    case blob do
+      # New blob - ok to replace file
+      {:ok, blob_struct, :new} ->
+        File.mkdir_p!(dest_dir)
+        # TODO: rename breaks tests as it deletes the test input file,
+        # but this is fixable.
         # File.rename!(source_file, dest_file)
         File.cp!(source_file, dest_file)
-        :new
-      end
+        {:ok, :new, blob_struct, dest_file}
 
-    %{size: size} = File.stat!(dest_file)
+      # Existing blob - no need to replace the file
+      {:ok, blob_struct, :existing} ->
+        # TODO: At least stat the file to see that it is still there and of expected size
+        {:ok, :existing, blob_struct, dest_file}
 
-    {:ok, %{status: status, dest_file: dest_file, size: size, hashes: hashes}}
+      # Conflict or error - do not replace. abort.
+      {:error, _, _} ->
+        # TODO: Clean up the temp file
+        {:error, "failed to store BLOB"}
+    end
   end
 
   defp write_file(stream, file_path) do
@@ -113,7 +99,10 @@ defmodule Bindepot.Core.Assets do
   defp compute_hash(stream, io \\ nil) do
     hashes =
       stream
-      |> Enum.reduce(Hasher.hash_init([:md5, :sha, :sha256]), &hashing_reducer(&1, &2, io))
+      |> Enum.reduce(
+        Hasher.hash_init([:md5, :sha, :sha256, :blake2b]),
+        &hashing_reducer(&1, &2, io)
+      )
       |> Hasher.hash_final()
 
     Hasher.to_string(hashes)
