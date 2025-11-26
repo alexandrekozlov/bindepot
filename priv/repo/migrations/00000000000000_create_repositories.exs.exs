@@ -53,6 +53,8 @@ defmodule Bindepot.Repo.Migrations.CreateRepositories do
           null: true
     end
 
+    create unique_index("nodes", [:repository_id, :type, :path, :name])
+
     create table("packages", primary_key: false) do
       add :id, :uuid, primary_key: true, null: false
       add :name, :string, null: false

@@ -37,104 +37,155 @@ defmodule Bindepot.Core.NodesTest do
     end
   end
 
-  # test "create_file" do
-  #   Nodes.create_file(
-  #     UUID.string_to_binary!("00000000-0000-0000-0000-000000000001"),
-  #     "/A/B/C",
-  #     UUID.string_to_binary!("00000000-0000-0000-0000-000000000042")
-  #   )
-  #   |> IO.inspect()
-  # end
+  def create_repositories(_context) do
+    {:ok, repo1} =
+      Bindepot.Core.Repositories.create(%{
+        name: "generic-local-1",
+        type: "local",
+        package_type: "generic"
+      })
 
-  # test "gen_nodes_recursively" do
-  #   Nodes.nodes_from_path([]) |> IO.inspect()
-  #   Nodes.nodes_from_path(["A"]) |> IO.inspect()
-  #   Nodes.nodes_from_path(["A", "B", "C", "D"]) |> IO.inspect()
-  # end
+    {:ok, repo2} =
+      Bindepot.Core.Repositories.create(%{
+        name: "generic-local-2",
+        type: "local",
+        package_type: "generic"
+      })
 
-  # test "generate_nodes directory" do
-  #   assert [
-  #            %{path: "/", name: "A", type: 0, repository_id: 123},
-  #            %{path: "/A", name: "B", type: 0, repository_id: 123},
-  #            %{path: "/A/B", name: "C", type: 0, repository_id: 123},
-  #            %{path: "/A/B/C", name: "D", type: 0, repository_id: 123}
-  #          ] =
-  #            Nodes.generate_nodes(123, "/A/B/C/D")
-  # end
+    %{
+      repo1: repo1,
+      repo2: repo2
+    }
+  end
 
-  # test "generate_nodes file" do
-  #   assert [
-  #            %{path: "/", name: "A", type: 0, repository_id: 123},
-  #            %{path: "/A", name: "B", type: 0, repository_id: 123},
-  #            %{path: "/A/B", name: "C", type: 0, repository_id: 123},
-  #            %{path: "/A/B/C", name: "D", type: 0, repository_id: 123, blob_id: 42}
-  #          ] =
-  #            Nodes.generate_nodes(123, "/A/B/C/D", 42)
-  # end
+  def create_blobs(_context) do
+    {:ok, blob1, _} =
+      Bindepot.Core.Blobs.put(%{
+        size: 1024,
+        sha256: "sha-256-hash-1"
+      })
 
-  # test "generate_nodes empty path" do
-  #   assert [] =
-  #            Nodes.generate_nodes(123, "")
-  # end
+    {:ok, blob2, _} =
+      Bindepot.Core.Blobs.put(%{
+        size: 1024,
+        sha256: "sha-256-hash-2"
+      })
 
-  # test "generate_nodes empty path with blob" do
-  #   assert [] =
-  #            Nodes.generate_nodes(123, "", 42)
-  # end
+    %{blob1: blob1, blob2: blob2}
+  end
 
-  # test "generate_nodes root path" do
-  #   assert [] =
-  #            Nodes.generate_nodes(123, "/")
-  # end
+  describe "create_directory" do
+    setup [:create_repositories]
 
-  # test "generate_nodes root path with blob" do
-  #   assert [] =
-  #            Nodes.generate_nodes(123, "/", 42)
-  # end
+    test "create a non-directory should succeed", context do
+      assert {:ok, []} =
+               Nodes.create_directory(
+                 context.repo1.id,
+                 "/"
+               )
+    end
 
-  # test "generate_nodes directory at root" do
-  #   assert [
-  #            %{path: "/", name: "A", type: 0, repository_id: 123}
-  #          ] =
-  #            Nodes.generate_nodes(123, "/A")
-  # end
+    test "create a subdirectories one by one should succeed in all cases", context do
+      assert {:ok, _} =
+               Nodes.create_directory(
+                 context.repo1.id,
+                 "/A"
+               )
 
-  # test "generate_nodes file at root" do
-  #   assert [
-  #            %{path: "/", name: "A", type: 0, repository_id: 123, blob_id: 42}
-  #          ] =
-  #            Nodes.generate_nodes(123, "/A", 42)
-  # end
+      assert {:ok, _} =
+               Nodes.create_directory(
+                 context.repo1.id,
+                 "/A/B"
+               )
 
-  # test "generate_nodes single element relative directory" do
-  #   assert [
-  #            %{path: "/", name: "A", type: 0, repository_id: 123}
-  #          ] =
-  #            Nodes.generate_nodes(123, "A")
-  # end
+      assert {:ok, _} =
+               Nodes.create_directory(
+                 context.repo1.id,
+                 "/A/B/C"
+               )
 
-  # test "generate_nodes single element relative file" do
-  #   assert [
-  #            %{path: "/", name: "A", type: 0, repository_id: 123, blob_id: 42}
-  #          ] =
-  #            Nodes.generate_nodes(123, "A", 42)
-  # end
+      assert {:ok, _} =
+               Nodes.create_directory(
+                 context.repo1.id,
+                 "/A/B/D"
+               )
+    end
+  end
 
-  # test "mkdir relative path to directory" do
-  #   assert [
-  #            %{path: "/", name: "A", type: 0, repository_id: 123},
-  #            %{path: "/A", name: "B", type: 0, repository_id: 123},
-  #            %{path: "/A/B", name: "C", type: 0, repository_id: 123}
-  #          ] =
-  #            Nodes.generate_nodes(123, "A/B/C")
-  # end
+  describe "create_file" do
+    setup [:create_repositories, :create_blobs]
 
-  # test "mkdir relative path to file" do
-  #   assert [
-  #            %{path: "/", name: "A", type: 0, repository_id: 123},
-  #            %{path: "/A", name: "B", type: 0, repository_id: 123},
-  #            %{path: "/A/B", name: "C", type: 0, repository_id: 123, blob_id: 42}
-  #          ] =
-  #            Nodes.generate_nodes(123, "A/B/C", 42)
-  # end
+    test "creating file should succeed", context do
+      assert {:ok, _} =
+               Nodes.create_file(
+                 context.repo1.id,
+                 "/A/B/file1",
+                 context.blob1.id
+               )
+    end
+
+    test "creating files with the same path in distinct repos should succeed", context do
+      assert {:ok, _} =
+               Nodes.create_file(
+                 context.repo1.id,
+                 "/A/B/file1",
+                 context.blob1.id
+               )
+
+      assert {:ok, _} =
+               Nodes.create_file(
+                 context.repo2.id,
+                 "/A/B/file1",
+                 context.blob1.id
+               )
+    end
+
+    test "creating multuple files at the same path should succeed", context do
+      assert {:ok, _} =
+               Nodes.create_file(
+                 context.repo1.id,
+                 "/A/B/file1",
+                 context.blob1.id
+               )
+
+      assert {:ok, _} =
+               Nodes.create_file(
+                 context.repo1.id,
+                 "/A/B/file2",
+                 context.blob2.id
+               )
+    end
+
+    test "creating multuple files at different levels should succeed", context do
+      assert {:ok, _} =
+               Nodes.create_file(
+                 context.repo1.id,
+                 "/A/B/file1",
+                 context.blob1.id
+               )
+
+      assert {:ok, _} =
+               Nodes.create_file(
+                 context.repo1.id,
+                 "/A/file1",
+                 context.blob1.id
+               )
+    end
+
+    test "replacing file should succeed", context do
+      assert {:ok, _} =
+               Nodes.create_file(
+                 context.repo1.id,
+                 "/A/file1",
+                 context.blob1.id
+               )
+
+      assert {:ok, _} =
+               Nodes.create_file(
+                 context.repo1.id,
+                 "/A/file1",
+                 context.blob1.id
+               )
+    end
+  end
 end

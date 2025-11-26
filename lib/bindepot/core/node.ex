@@ -4,6 +4,7 @@ defmodule Bindepot.Core.Node do
   """
 
   import Ecto.Changeset
+  import Ecto.Query
   use Ecto.Schema
 
   alias Bindepot.Core.Repository
@@ -34,19 +35,58 @@ defmodule Bindepot.Core.Node do
       :blob_id
     ])
     |> assoc_constraint(:repository)
-    |> validate_required([:type, :path, :name])
+    |> validate_required([:type, :path, :name, :repository_id])
+    # TODO: Add path format validation
+    # TODO: Add type validation
+    |> validate_immutable([:type, :path, :name, :repository_id])
+    # |> unique_constraint([:type, :path, :name, :repository_id])
     |> validate_file_node()
   end
 
-  @doc """
-    Checks that file node (type: 1), has `blob_id` value.
-  """
+  def base() do
+    Node
+  end
+
+  def by_path(query \\ base(), path) do
+    where(query, [n], n.path == ^path)
+  end
+
+  # Verifies that file node (type: 1), has `blob_id` value.
   defp validate_file_node(changeset) do
-    if fetch_field!(changeset, :type) == 1 and
-         is_nil(fetch_field!(changeset, :blob_id)) do
-      add_error(changeset, :blob_id, "blob required for file node")
-    else
-      changeset
+    type = fetch_field!(changeset, :type)
+    blob_id = fetch_field!(changeset, :blob_id)
+
+    case {type, blob_id} do
+      {1, nil} -> add_error(changeset, :blob_id, "blob required for file node")
+      _ -> changeset
+    end
+  end
+
+  defp validate_immutable(changeset, fields) when is_list(fields) do
+    Enum.reduce(fields, changeset, &validate_immutable_field(&2, &1))
+  end
+
+  defp validate_immutable_field(changeset, field) when is_atom(field) or is_binary(field) do
+    current = Map.get(changeset.data, field, nil)
+    new = fetch_change(changeset, field)
+
+    case {current, new} do
+      # should never happen as it will not pass validate_required
+      {nil, :error} ->
+        add_error(changeset, :type, "node #{field} is required")
+
+      # either already set or new
+      {_, :error} ->
+        changeset
+
+      {nil, {:ok, _}} ->
+        changeset
+
+      {c, {:ok, n}} when c != n ->
+        add_error(changeset, :type, "#{field} once set is immutable")
+
+      _ ->
+        changeset
     end
   end
 end
