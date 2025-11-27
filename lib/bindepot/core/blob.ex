@@ -6,6 +6,14 @@ defmodule Bindepot.Core.Blob do
   alias Bindepot.Core.Blob
   alias Bindepot.Core.Node
 
+  @type t :: %__MODULE__{
+          size: non_neg_integer(),
+          md5: String.t(),
+          sha1: String.t(),
+          sha256: String.t(),
+          blake2: String.t()
+        }
+
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
 
@@ -46,12 +54,12 @@ defmodule Bindepot.Core.Blob do
   end
 
   defp validate_immutable(changeset, fields) do
-    Enum.reduce(fields, changeset, fn e, a ->
-      check_new_or_same(a, e)
+    Enum.reduce(fields, changeset, fn field, chset ->
+      check_field_is_set_or_unchanged(chset, field)
     end)
   end
 
-  defp check_new_or_same(changeset, field) do
+  defp check_field_is_set_or_unchanged(changeset, field) do
     case {Map.get(changeset.data, field), get_change(changeset, field)} do
       {nil, nil} -> changeset
       {nil, _new} -> changeset

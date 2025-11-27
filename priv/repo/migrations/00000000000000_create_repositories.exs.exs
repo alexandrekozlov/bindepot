@@ -106,51 +106,5 @@ defmodule Bindepot.Repo.Migrations.CreateRepositories do
       add :provider, :string, null: false
       add :configuration, :map, default: %{}, null: false
     end
-
-    create table("assets", primary_key: false) do
-      add :id, :uuid, primary_key: true, null: false
-      add :name, :string, null: false
-      add :path, :string, null: false
-      add :size, :integer, null: false
-
-      add :md5, :string, null: true
-      add :sha1, :string, null: true
-      add :sha256, :string, null: true
-
-      add :repository_id,
-          references("repositories",
-            column: :id,
-            type: :uuid,
-            on_delete: :delete_all,
-            on_update: :update_all
-          )
-
-      timestamps()
-      add :accessed_at, :naive_datetime_usec
-    end
-
-    create unique_index("assets", :name)
-
-    create table("assets_versions", primary_key: false) do
-      add :asset_id,
-          references("assets",
-            column: :id,
-            type: :uuid,
-            on_delete: :delete_all
-          ),
-          null: false
-
-      add :version_id,
-          references("versions",
-            column: :id,
-            type: :uuid,
-            on_delete: :delete_all
-          ),
-          null: false
-
-      timestamps()
-    end
-
-    create unique_index("assets_versions", [:asset_id, :version_id])
   end
 end

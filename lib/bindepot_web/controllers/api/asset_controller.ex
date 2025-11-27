@@ -1,7 +1,6 @@
 defmodule BindepotWeb.Api.AssetController do
   use BindepotWeb, :controller
 
-  alias Bindepot.Core.Asset
   alias Bindepot.Core.Assets
   alias Bindepot.Core.Repositories
 

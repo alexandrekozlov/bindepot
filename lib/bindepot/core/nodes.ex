@@ -6,63 +6,116 @@ defmodule Bindepot.Core.Nodes do
     Repo.all_by(Node, repository_id: repository_id, type: 1)
   end
 
-  def create_directory(repository_id, path) do
-    path
-    |> create_node_entries(repository_id)
-    |> apply_node_entries()
+  def get_file(repository_id, path) do
+    case List.first(items_from_path(path)) do
+      nil ->
+        nil
+
+      {path, name} ->
+        Repo.get_by(Node, repository_id: repository_id, type: 1, path: path, name: name)
+    end
   end
 
-  def create_file(repository_id, path, blob_id) do
-    path
-    |> create_node_entries(repository_id)
-    |> then(fn [file_node | rest] ->
-      [%{file_node | type: 1} |> Map.put(:blob_id, blob_id) | rest]
-    end)
-    |> apply_node_entries()
+  @doc ~S"""
+    Creates a directory.
+
+    Returns the last directory node. On error returns reason and all nodes as
+    a third tuple element.
+
+  """
+  @spec create_directory(any(), String.t()) :: {:ok, Node.t()} | {:error, String.t(), any()}
+  def create_directory(repository_id, path) do
+    node_params =
+      create_node_params(path, repository_id)
+
+    case node_params do
+      [] -> {:error, "effective path is epmty", nil}
+      _ -> apply_node_params(node_params)
+    end
+  end
+
+  @doc ~S"""
+    Creates a file.
+
+    Returns a file node.
+
+    If file already exists, then the function fails. The existing file can be
+    overwritten by specifying `replace` option.
+  """
+  @spec create_file(any(), String.t(), any(), replace: boolean()) ::
+          {:ok, Node.t()} | {:error, String.t(), any()}
+  def create_file(repository_id, path, blob_id, opts \\ []) do
+    node_params =
+      create_node_params(path, repository_id)
+
+    case node_params do
+      [] ->
+        {:error, "effective path is epmty", nil}
+
+      _ ->
+        node_params
+        |> then(fn [file_node | rest] ->
+          [%{file_node | type: 1} |> Map.put(:blob_id, blob_id) | rest]
+        end)
+        |> apply_node_params(opts)
+    end
   end
 
   @doc """
-    Create node elements from path.
+    Create items from path.
 
-    Returns list of tuples `{ parent_path, name }`. The tuples arranged from
+    Returns list of tuples `{ parent_path, child }`. The tuples arranged from
     child to parent, which makes it convenient to modify the last path element
     depending on whether it is a file or a directory.
   """
-  def nodes_from_path(path) do
+  def items_from_path(path) do
     path
     |> String.split("/", trim: true)
-    |> do_nodes_from_path()
+    |> do_items_from_path()
   end
 
-  defp create_node_entries(path, repository_id) do
+  defp create_node_params(path, repository_id) do
     path
-    |> nodes_from_path()
+    |> items_from_path()
     |> Enum.scan(nil, fn n, _a ->
       %{type: 0, path: elem(n, 0), name: elem(n, 1), repository_id: repository_id}
     end)
   end
 
-  defp apply_node_entries(node_entries) do
-    results =
-      node_entries
-      |> Enum.reverse()
-      |> Enum.reduce([], &[insert_or_update_node(&1) | &2])
+  @spec apply_node_params([map()], keyword()) :: {:ok, Node.t()} | {:error, String.t()}
+  defp apply_node_params(node_entries, opts \\ []) do
+    Repo.transact(fn ->
+      results =
+        node_entries
+        |> Enum.reverse()
+        |> Enum.reduce([], &[insert_or_update_node(&1, opts) | &2])
 
-    if Enum.all?(results, &(elem(&1, 0) == :ok)) do
-      {:ok, results}
-    else
-      {:error, results}
-    end
+      case Enum.find(results, &(elem(&1, 0) != :ok)) do
+        nil -> List.first(results)
+        error_node -> error_node
+      end
+    end)
   end
 
-  defp insert_or_update_node(node_attributes) do
-    existing_node = Repo.get_by(Node, node_attributes)
-    node_struct = existing_node || %Node{}
-    changeset = Node.changeset(node_struct, node_attributes)
-    Repo.insert_or_update(changeset)
+  # opts:
+  #   replace: true | false - when true allows node replacement.
+  #           this applies only for file nodes and ignored for directories.
+  defp insert_or_update_node(node_attributes, opts) do
+    existing_node =
+      if Keyword.get(opts, :replace, false) and node_attributes.type == 1 do
+        Repo.get_by(Node, Map.delete(node_attributes, :blob_id))
+      else
+        Repo.get_by(Node, node_attributes)
+      end
+
+    node = existing_node || %Node{}
+
+    node
+    |> Node.changeset(node_attributes)
+    |> Repo.insert_or_update()
   end
 
-  defp do_nodes_from_path(path, parent \\ nil, nodes \\ []) do
+  defp do_items_from_path(path, parent \\ nil, nodes \\ []) do
     cond do
       # Empty path
       path == [] ->
@@ -74,7 +127,7 @@ defmodule Bindepot.Core.Nodes do
 
       # first element
       is_nil(parent) ->
-        do_nodes_from_path(tl(path), "/" <> hd(path), [{"/", hd(path)} | nodes])
+        do_items_from_path(tl(path), "/" <> hd(path), [{"/", hd(path)} | nodes])
 
       # last element
       length(path) == 1 ->
@@ -82,7 +135,7 @@ defmodule Bindepot.Core.Nodes do
 
       # any other element
       true ->
-        do_nodes_from_path(tl(path), parent <> "/" <> hd(path), [{parent, hd(path)} | nodes])
+        do_items_from_path(tl(path), parent <> "/" <> hd(path), [{parent, hd(path)} | nodes])
     end
   end
 end

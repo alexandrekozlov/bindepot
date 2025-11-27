@@ -1,7 +1,6 @@
 defmodule Bindepot.Core.Repository do
   alias Ecto.Changeset
   alias Bindepot.Core.Repository
-  alias Bindepot.Core.Asset
   alias Bindepot.Core.Node
 
   use Ecto.Schema
@@ -19,7 +18,6 @@ defmodule Bindepot.Core.Repository do
     field :repositories, {:array, :string}
 
     has_many :nodes, Node
-    has_many :assets, Asset
 
     timestamps()
     field :deleted_at, :naive_datetime

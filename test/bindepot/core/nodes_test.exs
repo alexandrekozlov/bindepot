@@ -3,37 +3,37 @@ defmodule Bindepot.Core.NodesTest do
 
   alias Bindepot.Core.Nodes
 
-  describe "nodes_from_path" do
+  describe "items_from_path" do
     test "empty path should return no nodes" do
-      assert [] = Nodes.nodes_from_path("")
+      assert [] = Nodes.items_from_path("")
     end
 
     test "root path should return no nodes" do
-      assert [] = Nodes.nodes_from_path("/")
+      assert [] = Nodes.items_from_path("/")
     end
 
     test "single root element returns one node" do
-      assert [{"/", "A"}] = Nodes.nodes_from_path("/A")
+      assert [{"/", "A"}] = Nodes.items_from_path("/A")
     end
 
     test "two elements return two nodes in reverse order" do
-      assert [{"/A", "B"}, {"/", "A"}] = Nodes.nodes_from_path("/A/B")
+      assert [{"/A", "B"}, {"/", "A"}] = Nodes.items_from_path("/A/B")
     end
 
     test "three elements return three nodes in reverse order" do
-      assert [{"/A/B", "C"}, {"/A", "B"}, {"/", "A"}] = Nodes.nodes_from_path("/A/B/C")
+      assert [{"/A/B", "C"}, {"/A", "B"}, {"/", "A"}] = Nodes.items_from_path("/A/B/C")
     end
 
     test "relative paths treated as absolute path" do
-      assert [{"/A/B", "C"}, {"/A", "B"}, {"/", "A"}] = Nodes.nodes_from_path("A/B/C")
+      assert [{"/A/B", "C"}, {"/A", "B"}, {"/", "A"}] = Nodes.items_from_path("A/B/C")
     end
 
     test "empty elements ignored" do
-      assert [{"/A/B", "C"}, {"/A", "B"}, {"/", "A"}] = Nodes.nodes_from_path("/A//B/C")
+      assert [{"/A/B", "C"}, {"/A", "B"}, {"/", "A"}] = Nodes.items_from_path("/A//B/C")
     end
 
     test "trailing separator ignored" do
-      assert [{"/A/B", "C"}, {"/A", "B"}, {"/", "A"}] = Nodes.nodes_from_path("/A/B/C/")
+      assert [{"/A/B", "C"}, {"/A", "B"}, {"/", "A"}] = Nodes.items_from_path("/A/B/C/")
     end
   end
 
@@ -77,8 +77,8 @@ defmodule Bindepot.Core.NodesTest do
   describe "create_directory" do
     setup [:create_repositories]
 
-    test "create a non-directory should succeed", context do
-      assert {:ok, []} =
+    test "create a non-directory should fail", context do
+      assert {:error, _reason, _node} =
                Nodes.create_directory(
                  context.repo1.id,
                  "/"
@@ -114,6 +114,15 @@ defmodule Bindepot.Core.NodesTest do
 
   describe "create_file" do
     setup [:create_repositories, :create_blobs]
+
+    test "creating file with empty path should fail", context do
+      assert {:error, _reason, _} =
+               Nodes.create_file(
+                 context.repo1.id,
+                 "/",
+                 context.blob1.id
+               )
+    end
 
     test "creating file should succeed", context do
       assert {:ok, _} =

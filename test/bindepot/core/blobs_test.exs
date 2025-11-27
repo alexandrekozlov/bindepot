@@ -73,7 +73,7 @@ defmodule Bindepot.Core.BlobsTest do
           sha256: "d9014c4624844aa5bac314773d6b689ad467fa4e1d1a50a1b8a99d5a95f72ff5"
         })
 
-      assert {:error, _changeset, _} =
+      assert {:error, _changeset} =
                Blobs.put(%{
                  size: 256,
                  md5: "ea0806edbc653eb74818123c778f0a9f",
@@ -89,7 +89,7 @@ defmodule Bindepot.Core.BlobsTest do
           sha256: "d9014c4624844aa5bac314773d6b689ad467fa4e1d1a50a1b8a99d5a95f72ff5"
         })
 
-      assert {:error, _changeset, _} =
+      assert {:error, _changeset} =
                Blobs.put(%{
                  size: 42,
                  sha256: "d9014c4624844aa5bac314773d6b689ad467fa4e1d1a50a1b8a99d5a95f72ff5"
@@ -125,7 +125,7 @@ defmodule Bindepot.Core.BlobsTest do
           sha256: "d9014c4624844aa5bac314773d6b689ad467fa4e1d1a50a1b8a99d5a95f72ff5"
         })
 
-      assert {:error, _changeset, _} =
+      assert {:error, _changeset} =
                Blobs.put(%{
                  size: 42,
                  sha256: "d9014c4624844aa5bac314773d6b689ad467fa4e1d1a50a1b8a99d5a95f72ff5"

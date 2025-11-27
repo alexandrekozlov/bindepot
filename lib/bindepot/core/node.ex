@@ -11,6 +11,14 @@ defmodule Bindepot.Core.Node do
   alias Bindepot.Core.DistFile
   alias Bindepot.Core.Blob
 
+  @type t :: %__MODULE__{
+          type: 0 | 1,
+          path: String.t(),
+          name: String.t(),
+          repository_id: term(),
+          blob_id: term()
+        }
+
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
 
@@ -39,7 +47,9 @@ defmodule Bindepot.Core.Node do
     # TODO: Add path format validation
     # TODO: Add type validation
     |> validate_immutable([:type, :path, :name, :repository_id])
-    # |> unique_constraint([:type, :path, :name, :repository_id])
+    |> unique_constraint([:type, :path, :name, :repository_id],
+      name: :nodes_repository_id_type_path_name_index
+    )
     |> validate_file_node()
   end
 

@@ -92,65 +92,105 @@ defmodule Bindepot.Core.RepositoryTest do
 
   describe "put and get asset" do
     setup do
-      params = %{
-        name: "generic",
-        type: "local",
-        package_type: "generic"
-      }
+      {:ok, repository} =
+        Repositories.create(%{
+          name: "generic",
+          type: "local",
+          package_type: "generic"
+        })
 
-      {:ok, repository} = Repositories.create(params)
-      %{repository: repository}
+      asset1_path =
+        Temp.mkdir!()
+        |> Path.join("asset1.bin")
+        |> tap(&File.write(&1, "This is a small artifact"))
+
+      asset2_path =
+        Temp.mkdir!()
+        |> Path.join("asset2.bin")
+        |> tap(&File.write(&1, "This is a sligntly larger artifact"))
+
+      %{repository: repository, asset1: asset1_path, asset2: asset2_path}
     end
 
-    test "put and get", %{repository: repository} do
-      assert {:ok, asset} =
-               Assets.put(
-                 repository.id,
-                 "asset.bin",
-                 "/",
-                 Path.expand("./test/data/artifact.txt")
-               )
-
-      assert asset.id != nil
-      assert asset.name == "asset.bin"
-
-      assert {:ok, result} = Assets.get(asset)
-      assert File.exists?(result)
+    test "attempt to get invalid path should fail", ctx do
+      refute Assets.get_stream(ctx.repository.id, "/")
     end
 
-    test "put multiple assets", %{repository: repository} do
-      assert {:ok, _asset} =
-               Assets.put(
-                 repository.id,
-                 "asset.bin",
-                 "/",
-                 Path.expand("./test/data/artifact.txt")
+    test "attempt to get non-existing asset should fail", ctx do
+      refute Assets.get_stream(ctx.repository.id, "/missing-asset.bin")
+    end
+
+    test "attempt to get non-file should fail", ctx do
+      assert {:ok, _node} =
+               Assets.put_file(
+                 ctx.repository.id,
+                 "/dir1/dir2/asset.bin",
+                 Path.expand(ctx.asset1)
                )
 
-      assert {:ok, _asset} =
-               Assets.put(
-                 repository.id,
+      refute Assets.get_stream(ctx.repository.id, "/dir1/dir2")
+    end
+
+    test "after putting asset should be able to retrieve it", ctx do
+      assert {:ok, node} =
+               Assets.put_file(
+                 ctx.repository.id,
+                 "/asset.bin",
+                 Path.expand(ctx.asset1)
+               )
+
+      assert node.path == "/"
+      assert node.name == "asset.bin"
+
+      assert Assets.get_stream(ctx.repository.id, "/asset.bin")
+    end
+
+    test "put multiple different assets", ctx do
+      assert {:ok, _node} =
+               Assets.put_file(
+                 ctx.repository.id,
+                 "/asset.bin",
+                 Path.expand(ctx.asset1)
+               )
+
+      assert {:ok, _node} =
+               Assets.put_file(
+                 ctx.repository.id,
                  "/other/asset.bin",
-                 "/other",
-                 Path.expand("./test/data/artifact.txt")
+                 Path.expand(ctx.asset2)
                )
     end
 
-    test "replace asset", %{repository: repository} do
-      assert {:ok, _asset} =
-               Assets.put(
-                 repository.id,
-                 "asset.bin",
-                 "/",
-                 Path.expand("./test/data/artifact.txt")
+    test "replacing existing asset should fail", ctx do
+      assert {:ok, _node} =
+               Assets.put_file(
+                 ctx.repository.id,
+                 "/asset.bin",
+                 Path.expand(ctx.asset1)
                )
 
-      assert {:ok, _asset} =
-               Assets.put(
-                 repository.id,
-                 "asset.bin",
-                 "/",
-                 Path.expand("./test/data/artifact.txt")
+      assert {:error, _node} =
+               Assets.put_file(
+                 ctx.repository.id,
+                 "/asset.bin",
+                 Path.expand(ctx.asset2)
+               )
+    end
+
+    test "forcing asset replace should succeed", ctx do
+      assert {:ok, _node} =
+               Assets.put_file(
+                 ctx.repository.id,
+                 "/asset.bin",
+                 Path.expand(ctx.asset1)
+               )
+
+      assert {:ok, _node} =
+               Assets.put_file(
+                 ctx.repository.id,
+                 "/asset.bin",
+                 Path.expand(ctx.asset2),
+                 replace: true
                )
     end
   end
