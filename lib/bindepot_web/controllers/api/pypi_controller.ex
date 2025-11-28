@@ -2,6 +2,7 @@ defmodule BindepotWeb.Api.PypiController do
   use BindepotWeb, :controller
 
   alias Bindepot.Core.Assets
+  alias Bindepot.Core.DistFiles
 
   # https://peps.python.org/pep-0425/
   # https://peps.python.org/pep-0503/
@@ -51,8 +52,19 @@ defmodule BindepotWeb.Api.PypiController do
     #   2. Provide validation info (expected hashes) as an extra parameter
     #   3. (preferred) Provide a function parameter that is called after hash is
     #      computed, but before file is stored and recorded in DB.
-    {:ok, asset_info} = Assets.put(repo.id, store_path, temp_file)
-    resp = BindepotWeb.Api.Utils.sanitize_schema(asset_info)
+    {:ok, node} = Assets.put_file(repo.id, store_path, temp_file, replace: true)
+
+    pkg =
+      DistFiles.create(
+        asset_filename,
+        "application/octet-stream",
+        package_version,
+        package_name,
+        "pypi",
+        node
+      )
+
+    resp = BindepotWeb.Api.Utils.sanitize_schema(pkg)
     IO.inspect(resp)
 
     conn

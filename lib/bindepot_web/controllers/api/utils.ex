@@ -13,7 +13,21 @@ defmodule BindepotWeb.Api.Utils do
     repo
     |> Map.from_struct()
     |> remove_not_loaded_associations()
-    |> Map.delete(:__meta__)
+    |> remove_meta()
+    #|> Map.delete(:__meta__)
+  end
+
+  defp remove_meta(map) do
+    Enum.reduce(map, %{}, fn {key, value}, acc ->
+      cond do
+        key == :__meta__ ->
+          acc
+        is_map(value) ->
+          Map.put(acc, key, remove_meta(value))
+        true ->
+          Map.put(acc, key, value)
+      end
+    end)
   end
 
   defp remove_not_loaded_associations(map) do
@@ -22,7 +36,13 @@ defmodule BindepotWeb.Api.Utils do
       if is_struct(value, Ecto.Association.NotLoaded) do
         acc
       else
-        Map.put(acc, key, value)
+        if is_struct(value) do
+          v= Map.from_struct(value)
+          |> remove_not_loaded_associations()
+          Map.put(acc, key, v)
+        else
+          Map.put(acc, key, value)
+        end
       end
     end)
   end

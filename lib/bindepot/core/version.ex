@@ -20,10 +20,11 @@ defmodule Bindepot.Core.Version do
     struct
     |> cast(params, [
       :id,
-      :version
+      :version,
+      :package_id
     ])
+    |> cast_assoc(:package, required: false)
     |> validate_required([:version])
     |> assoc_constraint(:package)
-    |> assoc_constraint(:assets)
   end
 end

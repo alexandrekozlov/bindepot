@@ -14,4 +14,5 @@ if [ -z "$VIRTUAL_ENV" ] ; then
 fi
 
 export PIP_INDEX_URL=$index_url
-pip install --force-reinstall --no-cache-dir -e . && python setup.py sdist bdist_wheel upload -r "$upload_url"
+# NO_CACHE=--force-reinstall --no-cache-dir 
+pip install $NO_CACHE -e . && python setup.py sdist bdist_wheel upload -r "$upload_url"

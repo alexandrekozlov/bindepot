@@ -18,8 +18,11 @@ defmodule Bindepot.Core.DistFile do
 
   def changeset(dist_file, attrs) do
     dist_file
-    |> cast(attrs, [:node_id])
-    # do NOT require :node_id
-    |> validate_required([])
+    |> cast(attrs, [:name, :mime_type, :version_id, :node_id])
+    |> cast_assoc(:version, required: false)
+    |> cast_assoc(:node, required: false)
+    |> validate_required([:name])
+    |> assoc_constraint(:version)
+    |> assoc_constraint(:node)
   end
 end

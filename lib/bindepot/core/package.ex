@@ -14,7 +14,7 @@ defmodule Bindepot.Core.Package do
     has_many :versions, Version
   end
 
-  @package_types ~w(generic)
+  @package_types ~w(generic pypi)
 
   def changeset(struct, params) do
     struct

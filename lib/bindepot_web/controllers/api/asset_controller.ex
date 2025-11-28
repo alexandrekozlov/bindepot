@@ -49,12 +49,23 @@ defmodule BindepotWeb.Api.AssetController do
       |> Path.expand("/")
 
     repo = Repositories.get_by_name(repo_name)
-    {:ok, file_path} = Assets.get(repo.id, rel_artifact_path)
+    stream = Assets.get_stream(repo.id, rel_artifact_path)
 
-    send_download(conn, {:file, file_path},
-      filename: Path.basename(rel_artifact_path),
-      disposition: :attachment
+    conn
+    |> put_resp_content_type("application/octet-stream")
+    |> put_resp_header(
+      "content-disposition",
+      "attachment; filename=\"#{Path.basename(rel_artifact_path)}\""
     )
+    |> send_chunked(200)
+    |> then(fn c ->
+      Enum.reduce(stream, c, fn chunk, acc_conn ->
+        case Plug.Conn.chunk(acc_conn, chunk) do
+          {:ok, new_conn} -> new_conn
+          {:error, :closed} -> acc_conn
+        end
+      end)
+    end)
   end
 
   defp request_body_stream(conn) do
