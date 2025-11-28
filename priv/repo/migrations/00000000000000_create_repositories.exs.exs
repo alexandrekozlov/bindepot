@@ -61,6 +61,8 @@ defmodule Bindepot.Repo.Migrations.CreateRepositories do
       add :type, :string, null: false
     end
 
+    create unique_index("packages", [:name, :type])
+
     create table("versions", primary_key: false) do
       add :id, :uuid, primary_key: true, null: false
       add :version, :string, null: false
@@ -74,6 +76,8 @@ defmodule Bindepot.Repo.Migrations.CreateRepositories do
           ),
           null: false
     end
+
+    create unique_index("versions", [:package_id, :version])
 
     create table("dist_files", primary_key: false) do
       add :id, :uuid, primary_key: true, null: false
@@ -99,7 +103,7 @@ defmodule Bindepot.Repo.Migrations.CreateRepositories do
           null: false
     end
 
-    unique_index("dist_files", [:node_id])
+    unique_index("dist_files", [:name, :version_id, :node_id])
 
     create table("filestores", primary_key: false) do
       add :name, :string, primary_key: true, null: false

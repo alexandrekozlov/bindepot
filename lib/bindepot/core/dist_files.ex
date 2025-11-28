@@ -7,7 +7,7 @@ defmodule Bindepot.Core.DistFiles do
   alias Bindepot.Core.DistFile
   alias Bindepot.Core.Node
 
-  def create(name, mime_type, version, package_name, package_type, %Node{} = node) do
+  def create_new(name, mime_type, version, package_name, package_type, %Node{} = node) do
     pkg = %{name: package_name, type: package_type}
     ver = %{version: version, package: pkg}
 
@@ -23,27 +23,31 @@ defmodule Bindepot.Core.DistFiles do
     dist_file
   end
 
-  def create_old(name, mime_type, version, package_name, package_type, %Node{} = node) do
+  def create(name, mime_type, version, package_name, package_type, %Node{} = node) do
     # Repo.transact(fn ->
     {:ok, pkg} =
-      %Package{}
+      (Repo.get_by(Package, name: package_name, type: package_type) || %Package{})
       |> Package.changeset(%{name: package_name, type: package_type})
-      |> Repo.insert()
+      |> Repo.insert_or_update()
       |> IO.inspect()
 
     {:ok, ver} =
-      %Version{}
+      (Repo.get_by(Version, package_id: pkg.id, version: version) || %Version{})
+      |> IO.inspect()
+      |> Repo.preload([:package])
       |> Version.changeset(%{version: version})
+      |> IO.inspect()
       |> Ecto.Changeset.put_assoc(:package, pkg)
-      |> Repo.insert()
+      |> Repo.insert_or_update()
       |> IO.inspect()
 
     {:ok, dist_file} =
-      %DistFile{}
+      (Repo.one(from d in DistFile, where: d.name==^name and d.version_id==^ver.id and d.node_id==^node.id) || %DistFile{}) |> IO.inspect()
+      |> Repo.preload([:version, :node])
       |> DistFile.changeset(%{name: name, mime_type: mime_type})
       |> Ecto.Changeset.put_assoc(:version, ver)
       |> Ecto.Changeset.put_assoc(:node, node)
-      |> Repo.insert()
+      |> Repo.insert_or_update()
 
     dist_file
     #  {:ok, dist_file}

@@ -26,5 +26,6 @@ defmodule Bindepot.Core.Version do
     |> cast_assoc(:package, required: false)
     |> validate_required([:version])
     |> assoc_constraint(:package)
+    |> unique_constraint([:package_id, :version])
   end
 end

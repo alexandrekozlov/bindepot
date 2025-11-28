@@ -26,5 +26,6 @@ defmodule Bindepot.Core.Package do
     |> validate_required([:name, :type])
     |> validate_format(:name, ~r/\S+/)
     |> validate_inclusion(:type, @package_types)
+    |> unique_constraint([:name, :type])
   end
 end

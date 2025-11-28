@@ -22,6 +22,7 @@ defmodule Bindepot.Core.DistFile do
     |> cast_assoc(:version, required: false)
     |> cast_assoc(:node, required: false)
     |> validate_required([:name])
+    |> unique_constraint([:name, :version_id, :node_id])
     |> assoc_constraint(:version)
     |> assoc_constraint(:node)
   end
