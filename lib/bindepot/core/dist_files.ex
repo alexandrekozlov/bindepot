@@ -42,7 +42,11 @@ defmodule Bindepot.Core.DistFiles do
       |> IO.inspect()
 
     {:ok, dist_file} =
-      (Repo.one(from d in DistFile, where: d.name==^name and d.version_id==^ver.id and d.node_id==^node.id) || %DistFile{}) |> IO.inspect()
+      (Repo.one(
+         from d in DistFile,
+           where: d.name == ^name and d.version_id == ^ver.id and d.node_id == ^node.id
+       ) || %DistFile{})
+      |> IO.inspect()
       |> Repo.preload([:version, :node])
       |> DistFile.changeset(%{name: name, mime_type: mime_type})
       |> Ecto.Changeset.put_assoc(:version, ver)

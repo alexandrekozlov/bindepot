@@ -7,7 +7,8 @@ defmodule BindepotWeb.RepositoryLive.Show do
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
-    vrepo = Repositories.get(id)
+    id |> IO.inspect()
+    vrepo = Repositories.get(id) |> IO.inspect()
     vrepos = vrepo.repositories
     query = from r in Bindepot.Core.Repository, where: r.id in ^vrepos
 
@@ -18,7 +19,8 @@ defmodule BindepotWeb.RepositoryLive.Show do
         %{
           asset: a,
           url:
-            BindepotWeb.Endpoint.static_url() <> "/bindepot/repositories/" <> vrepo.name <> a.name
+            BindepotWeb.Endpoint.static_url() <>
+              "/api/storage/" <> vrepo.name <> Enum.join([a.path, a.name], "/")
         }
       end)
 

@@ -1,61 +1,52 @@
 defmodule BindepotWeb.Api.AssetController do
   use BindepotWeb, :controller
 
+  alias Bindepot.Repo
   alias Bindepot.Core.Assets
+  alias Bindepot.Core.Nodes
   alias Bindepot.Core.Repositories
+  alias BindepotWeb.Api.Utils
 
-  def list(conn, %{"repo" => repo_key} = _params) do
-    repo = Repositories.get_by_name(repo_key)
-    assets = Assets.all(repo)
+  def handle_get(conn, %{"path" => path} = params) do
+    case Map.has_key?(params, "list") do
+      true -> list(conn, path)
+      false -> download(conn, path)
+    end
+  end
+
+  def list(conn, %{"path" => path}) do
+    repo = conn.assigns.repository
 
     resp =
-      Enum.map(assets, fn x ->
+      Nodes.all(repo.id, Enum.join(path, "/"))
+      |> Repo.preload([:blob])
+      |> Enum.map(fn asset ->
         %{
-          repository: x.repository.name,
-          name: x.name
+          type: asset.type,
+          path: asset.path,
+          name: asset.name,
+          size: if(is_nil(asset.blob), do: -1, else: asset.blob.size)
         }
       end)
-
-    IO.inspect(resp)
-
-    conn
-    |> put_resp_content_type("application/json")
-    |> send_resp(200, Jason.encode!(resp, pretty: true))
-  end
-
-  def upload(conn, %{"repo" => repo_name, "path" => path}) do
-    repo = Repositories.get_by_name(repo_name)
-
-    rel_artifact_path =
-      path
-      |> Path.join()
-      |> Path.expand("/")
-
-    stream = request_body_stream(conn)
-    {:ok, asset} = Assets.put_stream(repo.id, rel_artifact_path, stream)
-    x = elem(List.first(asset), 1) |> IO.inspect(asset)
-
-    resp = sanitize_schema(x)
+      |> IO.inspect()
 
     conn
     |> put_resp_content_type("application/json")
     |> send_resp(200, Jason.encode!(resp, pretty: true))
   end
 
-  def download(conn, %{"repo" => repo_name, "path" => path} = _params) do
-    rel_artifact_path =
-      path
-      |> Path.join()
-      |> Path.expand("/")
+  def download(conn, %{"path" => path}) do
+    repo = conn.assigns.repository
 
-    repo = Repositories.get_by_name(repo_name)
-    stream = Assets.get_stream(repo.id, rel_artifact_path)
+    rel_path = Enum.join(path, "/")
+    # TODO: Error out if rel_path is a directory
+    stream = Assets.get_stream(repo.id, rel_path)
 
     conn
     |> put_resp_content_type("application/octet-stream")
     |> put_resp_header(
       "content-disposition",
-      "attachment; filename=\"#{Path.basename(rel_artifact_path)}\""
+      "attachment; filename=\"#{Path.basename(rel_path)}\""
     )
     |> send_chunked(200)
     |> then(fn c ->
@@ -68,82 +59,22 @@ defmodule BindepotWeb.Api.AssetController do
     end)
   end
 
-  defp request_body_stream(conn) do
-    Stream.resource(
-      fn ->
-        {:ok, conn}
-      end,
-      fn state ->
-        case state do
-          {:ok, conn} ->
-            case read_body(conn) do
-              {:ok, body, conn} ->
-                {[body], {:halt, conn}}
+  def upload(conn, %{"repo" => repo_name, "path" => path}) do
+    repo = Repositories.get_by_name(repo_name)
 
-              {:more, body, conn} ->
-                {[body], {:ok, conn}}
+    rel_artifact_path =
+      path
+      |> Path.join()
+      |> Path.expand("/")
 
-              {:error, _reason} ->
-                {:halt, {:error, conn}}
-            end
+    stream = Utils.request_body_as_stream(conn)
+    {:ok, node} = Assets.put_stream(repo.id, rel_artifact_path, stream, replace: true)
+    IO.inspect(node)
 
-          {:halt, conn} ->
-            {:halt, conn}
-        end
-      end,
-      fn _state ->
-        :ok
-      end
-    )
-  end
+    resp = Utils.sanitize_schema(node)
 
-  defp read_request_body(conn, file) do
-    case read_body(conn) do
-      {:ok, body, conn} ->
-        IO.binwrite(file, body)
-        {:ok, conn}
-
-      {:more, body, conn} ->
-        IO.binwrite(file, body)
-        read_request_body(conn, file)
-        {:ok, conn}
-
-      {:error, reason} ->
-        {:error, reason}
-    end
-  end
-
-  defp sanitize_schema(list) when is_list(list) do
-    f = fn e ->
-      Map.from_struct(e)
-      |> remove_not_loaded_associations()
-      |> Map.delete(:__meta__)
-    end
-
-    Enum.map(list, f)
-  end
-
-  defp sanitize_schema(repo) when is_struct(repo) do
-    repo
-    |> Map.from_struct()
-    |> remove_not_loaded_associations()
-    |> Map.delete(:__meta__)
-  end
-
-  defp remove_not_loaded_associations(map) do
-    map
-    |> Enum.reduce(%{}, fn {key, value}, acc ->
-      if is_struct(value, Ecto.Association.NotLoaded) do
-        acc
-      else
-        Map.put(acc, key, value)
-      end
-    end)
-  end
-
-  defp extract_errors(%Ecto.Changeset{} = changeset) do
-    Ecto.Changeset.traverse_errors(changeset, fn {msg, _opts} ->
-      msg
-    end)
+    conn
+    |> put_resp_content_type("application/json")
+    |> send_resp(200, Jason.encode!(resp, pretty: true))
   end
 end

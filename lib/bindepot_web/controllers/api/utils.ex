@@ -1,4 +1,51 @@
 defmodule BindepotWeb.Api.Utils do
+  alias Plug.Conn
+
+  def request_body_as_stream(conn) do
+    Stream.resource(
+      fn ->
+        {:ok, conn}
+      end,
+      fn state ->
+        case state do
+          {:ok, conn} ->
+            case Conn.read_body(conn) do
+              {:ok, body, conn} ->
+                {[body], {:halt, conn}}
+
+              {:more, body, conn} ->
+                {[body], {:ok, conn}}
+
+              {:error, _reason} ->
+                {:halt, {:error, conn}}
+            end
+
+          {:halt, conn} ->
+            {:halt, conn}
+        end
+      end,
+      fn _state ->
+        :ok
+      end
+    )
+  end
+
+  def request_body_as_file(conn, file) do
+    case Conn.read_body(conn) do
+      {:ok, body, conn} ->
+        IO.binwrite(file, body)
+        {:ok, conn}
+
+      {:more, body, conn} ->
+        IO.binwrite(file, body)
+        request_body_as_file(conn, file)
+        {:ok, conn}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
   def sanitize_schema(list) when is_list(list) do
     f = fn e ->
       Map.from_struct(e)
@@ -14,7 +61,8 @@ defmodule BindepotWeb.Api.Utils do
     |> Map.from_struct()
     |> remove_not_loaded_associations()
     |> remove_meta()
-    #|> Map.delete(:__meta__)
+
+    # |> Map.delete(:__meta__)
   end
 
   defp remove_meta(map) do
@@ -22,8 +70,10 @@ defmodule BindepotWeb.Api.Utils do
       cond do
         key == :__meta__ ->
           acc
+
         is_map(value) ->
           Map.put(acc, key, remove_meta(value))
+
         true ->
           Map.put(acc, key, value)
       end
@@ -37,8 +87,10 @@ defmodule BindepotWeb.Api.Utils do
         acc
       else
         if is_struct(value) do
-          v= Map.from_struct(value)
-          |> remove_not_loaded_associations()
+          v =
+            Map.from_struct(value)
+            |> remove_not_loaded_associations()
+
           Map.put(acc, key, v)
         else
           Map.put(acc, key, value)

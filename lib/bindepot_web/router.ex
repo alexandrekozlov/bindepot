@@ -33,6 +33,7 @@ defmodule BindepotWeb.Router do
     end
   end
 
+  # Package type spectific API.
   scope "/repositories", BindepotWeb.Api do
     pipe_through :repo_io
 
@@ -50,9 +51,26 @@ defmodule BindepotWeb.Router do
     get "/trash/repositories", RepositoryController, :list_deleted
     delete "/trash/repositories/:id", RepositoryController, :purge_repository
 
-    get "/storage/:repo/*path", AssetController, :list
-    put "/storage/:repo/*path", AssetController, :upload
-    get "/storage/:repo/*path", AssetController, :download
+    scope "/storage" do
+      pipe_through :repo_io
+
+      # TODO: the following deliniation
+      #   "/:repo/*path", where path is a directory - return directory info
+      #   "/:repo/*path", where path is a file - return file info
+      #   "/:repo/*path?list", where path is a directory - list items.
+      #                       Also, additional parameters:
+      #                           recursive=
+      #                           depth=
+      #                           includeFolders=
+      #   "/:repo/*path?download", where path is a file - download file
+      # TOOD: or shift upload/download to /assets endpoint?
+      #   GET "/assets/:repo/*path" - download
+      #   PUT "/assets/:repo/*path" - upload
+      # TODO: uploading artifact automatically creates package if repo supports packages.
+
+      get "/:repo/*path", AssetController, :handle_get
+      put "/:repo/*path", AssetController, :upload
+    end
 
     # scope "/pypi" do
     #   get "/:repository/simple/", PypiController, :simple_index

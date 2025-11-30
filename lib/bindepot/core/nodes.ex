@@ -2,6 +2,17 @@ defmodule Bindepot.Core.Nodes do
   alias Bindepot.Repo
   alias Bindepot.Core.Node
 
+  def all(repository_id, path) do
+    path
+    |> String.split("/", trim: true)
+    |> Enum.join("/")
+    |> then(fn p -> "/" <> p end)
+    |> then(&Repo.all_by(Node, repository_id: repository_id, path: &1))
+  end
+
+  @doc """
+    Gets all files recursively.
+  """
   def get_files(repository_id) do
     Repo.all_by(Node, repository_id: repository_id, type: 1)
   end
