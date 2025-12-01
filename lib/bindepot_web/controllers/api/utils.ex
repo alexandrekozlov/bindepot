@@ -1,6 +1,23 @@
 defmodule BindepotWeb.Api.Utils do
   alias Plug.Conn
 
+  def send_chunked_stream(conn, filename, stream) do
+    conn
+    |> Conn.put_resp_header(
+      "content-disposition",
+      "attachment; filename=\"#{filename}\""
+    )
+    |> Conn.send_chunked(200)
+    |> then(fn c ->
+      Enum.reduce(stream, c, fn chunk, acc_conn ->
+        case Plug.Conn.chunk(acc_conn, chunk) do
+          {:ok, new_conn} -> new_conn
+          {:error, :closed} -> acc_conn
+        end
+      end)
+    end)
+  end
+
   def request_body_as_stream(conn) do
     Stream.resource(
       fn ->

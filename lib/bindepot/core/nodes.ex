@@ -10,6 +10,26 @@ defmodule Bindepot.Core.Nodes do
     |> then(&Repo.all_by(Node, repository_id: repository_id, path: &1))
   end
 
+  def get_nodes(repository_id, path) do
+    file_or_dir =
+      case List.first(items_from_path(path)) do
+        nil ->
+          Repo.get_by(Node, repository_id: repository_id, path: "/")
+
+        {path, name} ->
+          Repo.get_by(Node, repository_id: repository_id, path: path, name: name)
+      end
+
+    case file_or_dir do
+      %{type: 0} ->
+        file_or_dir
+
+      %{type: 1} ->
+        file_or_dir
+        |> Repo.preload(:blob)
+    end
+  end
+
   @doc """
     Gets all files recursively.
   """

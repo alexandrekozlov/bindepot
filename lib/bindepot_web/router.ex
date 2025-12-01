@@ -54,6 +54,7 @@ defmodule BindepotWeb.Router do
     scope "/storage" do
       pipe_through :repo_io
 
+      get "/:repo/*path", StorageController, :handle_get
       # TODO: the following deliniation
       #   "/:repo/*path", where path is a directory - return directory info
       #   "/:repo/*path", where path is a file - return file info
@@ -62,13 +63,13 @@ defmodule BindepotWeb.Router do
       #                           recursive=
       #                           depth=
       #                           includeFolders=
-      #   "/:repo/*path?download", where path is a file - download file
-      # TOOD: or shift upload/download to /assets endpoint?
-      #   GET "/assets/:repo/*path" - download
-      #   PUT "/assets/:repo/*path" - upload
-      # TODO: uploading artifact automatically creates package if repo supports packages.
 
-      get "/:repo/*path", AssetController, :handle_get
+    end
+
+    scope "/assets" do
+      pipe_through :repo_io
+
+      get "/:repo/*path", AssetController, :download
       put "/:repo/*path", AssetController, :upload
     end
 
