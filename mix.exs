@@ -71,7 +71,8 @@ defmodule Bindepot.MixProject do
       {:uuid, "~> 1.1"},
       {:temp, "~> 0.4.9"},
       {:finch, "~> 0.20.0"},
-      {:excoveralls, "~> 0.18", only: [:test]}
+      {:excoveralls, "~> 0.18", only: [:test]},
+      {:ecto_enum, "~> 1.4"},
     ]
   end
 

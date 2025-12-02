@@ -10,29 +10,14 @@ defmodule Bindepot.Core.Nodes do
     |> then(&Repo.all_by(Node, repository_id: repository_id, path: &1))
   end
 
-  def get_node(repository_id, path) do
-    file_or_dir =
-      case parse_path(path) do
-        {"/", nil} ->
-          # TODO: There is no root node in the model. We can source properties
-          # from the repository itself (creation date etc), but then it would
-          # not be real node. We can live with it for the REST API, but not for
-          # internal API. The other options is to all explicit root node, but
-          # then who is going to create it? Repository or on the first node
-          # creation? If you query the repository with no content, where do you
-          # get the root node?
-          Repo.get_by(Node, repository_id: repository_id, path: "/")
+  def get(repository_id, path) do
+    case parse_path(path) do
+      {"/", nil} ->
+        :root
 
-        {p, n} ->
-          Repo.get_by(Node, repository_id: repository_id, path: p, name: n)
-      end
-
-    case file_or_dir do
-      %{type: 0} ->
-        file_or_dir
-
-      %{type: 1} ->
-        file_or_dir
+      {p, n} ->
+        Node
+        |> Repo.get_by(repository_id: repository_id, path: p, name: n)
         |> Repo.preload(:blob)
     end
   end
@@ -41,7 +26,7 @@ defmodule Bindepot.Core.Nodes do
     Gets all files recursively.
   """
   def get_files(repository_id) do
-    Repo.all_by(Node, repository_id: repository_id, type: 1)
+    Repo.all_by(Node, repository_id: repository_id, type: :file)
   end
 
   def get_file(repository_id, path) do
@@ -50,7 +35,7 @@ defmodule Bindepot.Core.Nodes do
         nil
 
       {path, name} ->
-        Repo.get_by(Node, repository_id: repository_id, type: 1, path: path, name: name)
+        Repo.get_by(Node, repository_id: repository_id, type: :file, path: path, name: name)
     end
   end
 
@@ -93,7 +78,7 @@ defmodule Bindepot.Core.Nodes do
       _ ->
         node_params
         |> then(fn [file_node | rest] ->
-          [%{file_node | type: 1} |> Map.put(:blob_id, blob_id) | rest]
+          [%{file_node | type: :file} |> Map.put(:blob_id, blob_id) | rest]
         end)
         |> apply_node_params(opts)
     end
@@ -128,16 +113,14 @@ defmodule Bindepot.Core.Nodes do
     depending on whether it is a file or a directory.
   """
   def items_from_path(path) do
-    path
-    |> String.split("/", trim: true)
-    |> do_items_from_path() |> IO.inspect()
+    path |> String.split("/", trim: true) |> do_items_from_path() |> IO.inspect()
   end
 
   defp create_node_params(path, repository_id) do
     path
     |> items_from_path()
     |> Enum.scan(nil, fn n, _a ->
-      %{type: 0, path: elem(n, 0), name: elem(n, 1), repository_id: repository_id}
+      %{type: :directory, path: elem(n, 0), name: elem(n, 1), repository_id: repository_id}
     end)
   end
 

@@ -6,24 +6,19 @@ defmodule Bindepot.Core.Node do
   import Ecto.Changeset
   import Ecto.Query
   use Ecto.Schema
+  import EctoEnum
 
   alias Bindepot.Core.Repository
   alias Bindepot.Core.DistFile
   alias Bindepot.Core.Blob
 
-  @type t :: %__MODULE__{
-          type: 0 | 1,
-          path: String.t(),
-          name: String.t(),
-          repository_id: term(),
-          blob_id: term()
-        }
-
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
 
+  defenum NodeType, directory: 0, file: 1
+
   schema "nodes" do
-    field :type, :integer
+    field :type, NodeType
     field :path, :string
     field :name, :string
 
@@ -32,6 +27,15 @@ defmodule Bindepot.Core.Node do
 
     has_one :dist_file, DistFile
   end
+
+  @type t :: %__MODULE__{
+    type: NodeType.t(),
+    path: String.t(),
+    name: String.t(),
+    repository_id: term(),
+    blob_id: term()
+  }
+
 
   def changeset(struct, params) do
     struct
@@ -67,7 +71,7 @@ defmodule Bindepot.Core.Node do
     blob_id = fetch_field!(changeset, :blob_id)
 
     case {type, blob_id} do
-      {1, nil} -> add_error(changeset, :blob_id, "blob required for file node")
+      {:file, nil} -> add_error(changeset, :blob_id, "blob required for file node")
       _ -> changeset
     end
   end
