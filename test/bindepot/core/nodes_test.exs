@@ -3,6 +3,24 @@ defmodule Bindepot.Core.NodesTest do
 
   alias Bindepot.Core.Nodes
 
+  describe "parse_path" do
+    test "empty path resolves to a root path only" do
+      assert {"/", nil} = Nodes.parse_path("")
+    end
+
+    test "root path resolves to a root path only" do
+      assert {"/", nil} = Nodes.parse_path("/")
+    end
+
+    test "name at root resolves to a root path and a name" do
+      assert {"/", "item"} = Nodes.parse_path("/item")
+    end
+
+    test "hierarchical path resolves to a prefix path and a name" do
+      assert {"/dir1/dir2/dir3", "file"} = Nodes.parse_path("/dir1/dir2/dir3/file")
+    end
+  end
+
   describe "items_from_path" do
     test "empty path should return no nodes" do
       assert [] = Nodes.items_from_path("")

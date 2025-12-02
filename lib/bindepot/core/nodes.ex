@@ -10,14 +10,21 @@ defmodule Bindepot.Core.Nodes do
     |> then(&Repo.all_by(Node, repository_id: repository_id, path: &1))
   end
 
-  def get_nodes(repository_id, path) do
+  def get_node(repository_id, path) do
     file_or_dir =
-      case List.first(items_from_path(path)) do
-        nil ->
+      case parse_path(path) do
+        {"/", nil} ->
+          # TODO: There is no root node in the model. We can source properties
+          # from the repository itself (creation date etc), but then it would
+          # not be real node. We can live with it for the REST API, but not for
+          # internal API. The other options is to all explicit root node, but
+          # then who is going to create it? Repository or on the first node
+          # creation? If you query the repository with no content, where do you
+          # get the root node?
           Repo.get_by(Node, repository_id: repository_id, path: "/")
 
-        {path, name} ->
-          Repo.get_by(Node, repository_id: repository_id, path: path, name: name)
+        {p, n} ->
+          Repo.get_by(Node, repository_id: repository_id, path: p, name: n)
       end
 
     case file_or_dir do
@@ -92,6 +99,27 @@ defmodule Bindepot.Core.Nodes do
     end
   end
 
+  def parse_path(path) do
+    items =
+      path
+      |> String.split("/", trim: true)
+      |> Enum.reverse()
+
+    case items do
+      [] ->
+        {"/", nil}
+
+      [n] when length(n) == 1 ->
+        {"/", n}
+
+      [n | p] ->
+        {p
+         |> Enum.reverse()
+         |> Enum.join("/")
+         |> then(fn p -> "/" <> p end), n}
+    end
+  end
+
   @doc """
     Create items from path.
 
@@ -102,7 +130,7 @@ defmodule Bindepot.Core.Nodes do
   def items_from_path(path) do
     path
     |> String.split("/", trim: true)
-    |> do_items_from_path()
+    |> do_items_from_path() |> IO.inspect()
   end
 
   defp create_node_params(path, repository_id) do
