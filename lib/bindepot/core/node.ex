@@ -48,8 +48,6 @@ defmodule Bindepot.Core.Node do
     ])
     |> assoc_constraint(:repository)
     |> validate_required([:type, :path, :name, :repository_id])
-    # TODO: Add path format validation
-    # TODO: Add type validation
     |> validate_immutable([:type, :path, :name, :repository_id])
     |> unique_constraint([:type, :path, :name, :repository_id],
       name: :nodes_repository_id_type_path_name_index

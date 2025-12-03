@@ -99,12 +99,10 @@ defmodule Bindepot.Core.Assets do
 
       # Existing blob - no need to replace the file
       {:ok, blob_struct, :existing} ->
-        # TODO: At least stat the file to see that it is still there and of expected size
         {:ok, :existing, blob_struct, dest_file}
 
       # Conflict or error - do not replace. abort.
       {:error, _} ->
-        # TODO: Clean up the temp file
         {:error, "failed to store BLOB"}
     end
   end

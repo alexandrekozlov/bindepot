@@ -54,8 +54,6 @@ defmodule BindepotWeb.Router do
     scope "/storage" do
       pipe_through :repo_io
 
-      get "/:repo/*path", StorageController, :get
-      # TODO: the following deliniation
       #   "/:repo/*path", where path is emppty - return repository info
       #   "/:repo/*path", where path is a directory - return directory info
       #   "/:repo/*path", where path is a file - return file info
@@ -64,7 +62,7 @@ defmodule BindepotWeb.Router do
       #                           recursive=
       #                           depth=
       #                           includeFolders=
-
+      get "/:repo/*path", StorageController, :get
     end
 
     scope "/assets" do

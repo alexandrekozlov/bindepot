@@ -31,7 +31,6 @@ defmodule BindepotWeb.Api.PypiController do
   def upload(conn, %{"path" => ["legacy"]} = params) do
     repo = conn.assigns.repository
 
-    # TODO: Create package/version record
     %{
       "name" => package_name,
       "version" => package_version,
@@ -44,14 +43,6 @@ defmodule BindepotWeb.Api.PypiController do
       |> Path.join(package_version)
       |> Path.join(asset_filename)
 
-    # TODO: Problem here that we put the asset in, but only then can verify
-    # hash. Yes, we can delete the invalid asset, but that is a problem that
-    # invalid package already replaced the good one, if one was already
-    # there. Solution is more fine grained control over the storage process.
-    #   1. Either split into multiple stages (calc hash, verify, record)
-    #   2. Provide validation info (expected hashes) as an extra parameter
-    #   3. (preferred) Provide a function parameter that is called after hash is
-    #      computed, but before file is stored and recorded in DB.
     {:ok, node} = Assets.put_file(repo.id, store_path, temp_file, replace: true)
 
     pkg =
