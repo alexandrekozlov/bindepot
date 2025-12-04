@@ -144,7 +144,7 @@ defmodule Bindepot.Core.Nodes do
   #           this applies only for file nodes and ignored for directories.
   defp insert_or_update_node(node_attributes, opts) do
     existing_node =
-      if Keyword.get(opts, :replace, false) and node_attributes.type == 1 do
+      if Keyword.get(opts, :replace, false) and node_attributes.type == :file do
         Repo.get_by(Node, Map.delete(node_attributes, :blob_id))
       else
         Repo.get_by(Node, node_attributes)

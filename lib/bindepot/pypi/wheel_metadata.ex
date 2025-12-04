@@ -1,4 +1,4 @@
-defmodule Bindepot.WheelMetadata do
+defmodule Bindepot.PyPI.WheelMetadata do
   @doc ~S"""
   Extracts and returns package metadata from a PyPI wheel (.whl) file.
 

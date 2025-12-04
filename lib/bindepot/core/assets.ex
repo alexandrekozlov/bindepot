@@ -36,7 +36,7 @@ defmodule Bindepot.Core.Assets do
   def get_stream(repository_id, path) do
     node = Nodes.get_file(repository_id, path)
 
-    if is_nil(node) or node.type != 1 do
+    if is_nil(node) or node.type != :file do
       nil
     else
       blob = Blobs.get(node.blob_id)
