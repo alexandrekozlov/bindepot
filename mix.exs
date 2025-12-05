@@ -72,7 +72,7 @@ defmodule Bindepot.MixProject do
       {:temp, "~> 0.4.9"},
       {:finch, "~> 0.20.0"},
       {:excoveralls, "~> 0.18", only: [:test]},
-      {:ecto_enum, "~> 1.4"},
+      {:ecto_enum, "~> 1.4"}
     ]
   end
 

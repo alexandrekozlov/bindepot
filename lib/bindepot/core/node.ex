@@ -15,7 +15,7 @@ defmodule Bindepot.Core.Node do
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
 
-  defenum NodeType, directory: 0, file: 1
+  defenum(NodeType, directory: 0, file: 1)
 
   schema "nodes" do
     field :type, NodeType
@@ -29,13 +29,12 @@ defmodule Bindepot.Core.Node do
   end
 
   @type t :: %__MODULE__{
-    type: NodeType.t(),
-    path: String.t(),
-    name: String.t(),
-    repository_id: term(),
-    blob_id: term()
-  }
-
+          type: NodeType.t(),
+          path: String.t(),
+          name: String.t(),
+          repository_id: term(),
+          blob_id: term()
+        }
 
   def changeset(struct, params) do
     struct

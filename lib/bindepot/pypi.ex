@@ -23,6 +23,5 @@ defmodule Bindepot.Pypi do
   end
 
   def get_package_metadata(file) do
-
   end
 end

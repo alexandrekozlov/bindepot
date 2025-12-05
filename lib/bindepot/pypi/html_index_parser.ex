@@ -1,4 +1,4 @@
-defmodule Bindepot.PyPI.PackageIndexParser do
+defmodule Bindepot.PyPI.HtmlIndexParser do
   @moduledoc ~S"""
     Streaming-safe HTML <a> tag extractor using regular expressions.
 
@@ -62,8 +62,7 @@ defmodule Bindepot.PyPI.PackageIndexParser do
   #  * Return remaining unconsumed tail
   #
   defp extract_from_buffer(buffer) do
-    IO.inspect(buffer)
-    captures = Regex.scan(@tag_regex, buffer, return: :index) |> IO.inspect()
+    captures = Regex.scan(@tag_regex, buffer, return: :index)
 
     case captures do
       [] ->
@@ -75,10 +74,10 @@ defmodule Bindepot.PyPI.PackageIndexParser do
         r =
           Enum.reduce(captures, {[], buffer, 0}, fn capture, {acc, buffer, off} ->
             [{start, len}, {tag_start, tag_len}, {content_start, content_len}] =
-              capture |> IO.inspect()
+              capture
 
-            tag_attrs = String.slice(buffer, tag_start - off, tag_len) |> IO.inspect()
-            content = String.slice(buffer, content_start - off, content_len) |> IO.inspect()
+            tag_attrs = String.slice(buffer, tag_start - off, tag_len)
+            content = String.slice(buffer, content_start - off, content_len)
             entry = extract_entry(tag_attrs, content)
 
             # Remaining buffer after this tag

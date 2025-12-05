@@ -113,7 +113,7 @@ defmodule Bindepot.Core.Nodes do
     depending on whether it is a file or a directory.
   """
   def items_from_path(path) do
-    path |> String.split("/", trim: true) |> do_items_from_path() |> IO.inspect()
+    path |> String.split("/", trim: true) |> do_items_from_path()
   end
 
   defp create_node_params(path, repository_id) do

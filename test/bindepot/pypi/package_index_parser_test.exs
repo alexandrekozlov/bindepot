@@ -1,14 +1,14 @@
 defmodule Bindepot.PyPI.PackageIndexParserTest do
   use ExUnit.Case, async: true
 
-  alias Bindepot.PyPI.PackageIndexParser
+  alias Bindepot.PyPI.HtmlIndexParser
 
   test "extracts a single anchor" do
     html = ~S(<a href="pkg.whl">Package</a>)
 
     result =
       [html]
-      |> PackageIndexParser.extract()
+      |> HtmlIndexParser.extract()
 
     assert [
              %{
@@ -27,7 +27,7 @@ defmodule Bindepot.PyPI.PackageIndexParserTest do
 
     result =
       [html]
-      |> PackageIndexParser.extract()
+      |> HtmlIndexParser.extract()
 
     assert [
              %{href: "a1.whl", content: "A1", hash: nil, attrs: %{}},
@@ -41,7 +41,7 @@ defmodule Bindepot.PyPI.PackageIndexParserTest do
       "rt1.whl\">PKG</a>"
     ]
 
-    result = PackageIndexParser.extract(stream)
+    result = HtmlIndexParser.extract(stream)
 
     assert [
              %{
@@ -54,7 +54,7 @@ defmodule Bindepot.PyPI.PackageIndexParserTest do
   test "handles attributes in any order" do
     html = ~S(<a data-x="1" rel="nofollow" href="ordered.whl">X</a>)
 
-    [entry] = PackageIndexParser.extract([html])
+    [entry] = HtmlIndexParser.extract([html])
 
     assert entry.href == "ordered.whl"
     assert entry.content == "X"
@@ -66,7 +66,7 @@ defmodule Bindepot.PyPI.PackageIndexParserTest do
   test "extracts hash digest from fragment" do
     html = ~S(<a href="pkg.whl#sha256=abcdef1234">PKG</a>)
 
-    [entry] = PackageIndexParser.extract([html])
+    [entry] = HtmlIndexParser.extract([html])
 
     assert entry.href == "pkg.whl#sha256=abcdef1234"
 
@@ -79,7 +79,7 @@ defmodule Bindepot.PyPI.PackageIndexParserTest do
   test "extracts all attributes" do
     html = ~S(<a href="x.whl" data-a="123" data-b="456">X</a>)
 
-    [entry] = PackageIndexParser.extract([html])
+    [entry] = HtmlIndexParser.extract([html])
 
     assert entry.attrs["data-a"] == "123"
     assert entry.attrs["data-b"] == "456"
