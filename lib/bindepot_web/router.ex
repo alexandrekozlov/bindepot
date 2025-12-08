@@ -72,16 +72,16 @@ defmodule BindepotWeb.Router do
       put "/:repo/*path", AssetController, :upload
     end
 
-    # scope "/pypi" do
-    #   get "/:repository/simple/", PypiController, :simple_index
-    #   get "/:repository/simple/:name/", PypiController, :project_index
+    scope "/pypi" do
+      #   get "/:repo/simple/", PypiController, :repo_simple_index
+      #   get "/:repo/simple/:name/", PypiController, :package_simple_index
 
-    #   get "/:repository/packages/:project/:version/:filename", PypiController, :serve_package
-    #   get "/:repository/packages/:project/:version/:filename/METADATA", PypiController, :serve_metadata
+      #   get "/:repository/packages/:project/:version/:filename", PypiController, :serve_package
+      #   get "/:repository/packages/:project/:version/:filename/METADATA", PypiController, :serve_metadata
 
-    #   post "/:repository/legacy/", PypiController, :legacy_upload
-    #   # post "/:repository/pypi", PypiController, :xmlrpc
-    # end
+      #   post "/:repository/legacy/", PypiController, :legacy_upload
+      #   # post "/:repository/pypi", PypiController, :xmlrpc
+    end
   end
 
   # Enable LiveDashboard in development

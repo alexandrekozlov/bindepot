@@ -12,7 +12,7 @@ defmodule Bindepot.Application do
       Bindepot.Repo,
       {DNSCluster, query: Application.get_env(:bindepot, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Bindepot.PubSub},
-      {Finch, name: MyApp.Finch},
+      {Finch, name: Bindepot.Finch},
       # Start a worker by calling: Bindepot.Worker.start_link(arg)
       # {Bindepot.Worker, arg},
       # Start to serve requests, typically the last entry

@@ -1,8 +1,12 @@
 defmodule BindepotWeb.Api.PypiController do
   use BindepotWeb, :controller
 
+  alias Bindepot.Core.Repository
   alias Bindepot.Core.Assets
   alias Bindepot.Core.DistFiles
+  alias Bindepot.Pypi.RepoIndex
+
+  alias BindepotWeb.Api.Utils
 
   # https://peps.python.org/pep-0425/
   # https://peps.python.org/pep-0503/
@@ -27,6 +31,22 @@ defmodule BindepotWeb.Api.PypiController do
       upgrade
       host
     )
+
+  def local_repo_index(conn, _params) do
+    body =
+      RepoIndex.get_local_repo_index(conn.assigns.repository.id)
+      |> RepoIndex.to_html_repo_simple_index()
+
+    conn
+    |> put_resp_content_type("text/html")
+    |> send_resp(200, body)
+  end
+
+  def fetch_remote_repo_index(%Repository{id: id, url: url} = _repo) do
+    repo_index_url = "#{String.trim_trailing(url, "/")}/simple/"
+    file = Utils.download(repo_index_url)
+    Assets.put_file(id, "/.pypi/index.html", file, replace: true)
+  end
 
   def upload(conn, %{"path" => ["legacy"]} = params) do
     repo = conn.assigns.repository

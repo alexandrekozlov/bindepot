@@ -21,6 +21,7 @@ defmodule Bindepot.Core.Node do
     field :type, NodeType
     field :path, :string
     field :name, :string
+    field :properties, :string
 
     belongs_to :repository, Repository
     belongs_to :blob, Blob
@@ -32,6 +33,7 @@ defmodule Bindepot.Core.Node do
           type: NodeType.t(),
           path: String.t(),
           name: String.t(),
+          properties: String.t(),
           repository_id: term(),
           blob_id: term()
         }
@@ -42,6 +44,7 @@ defmodule Bindepot.Core.Node do
       :type,
       :path,
       :name,
+      :properties,
       :repository_id,
       :blob_id
     ])

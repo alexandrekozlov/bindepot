@@ -1,13 +1,15 @@
 defmodule Bindepot.Core.Assets do
   import Ecto.Query, warn: false
 
+  alias Bindepot.Core.Blobs
+  alias Bindepot.Core.FileUtils
   alias Bindepot.Core.Node
   alias Bindepot.Core.Nodes
-  alias Bindepot.Core.Blobs
   alias Bindepot.Core.Repository
-  alias Bindepot.Core.Hasher
 
   require Logger
+
+  @hashes [:md5, :sha, :sha256, :blake2b]
 
   def all(%Repository{} = repo) do
     Nodes.get_files(repo.id)
@@ -15,6 +17,10 @@ defmodule Bindepot.Core.Assets do
 
   @doc ~S"""
     Puts file as an asset into repository.
+
+    `path` is a the relaive path in the repository.
+
+    `source_path` the file to be stored.
 
     Returns file node on success.
 
@@ -31,6 +37,16 @@ defmodule Bindepot.Core.Assets do
   def put_stream(repository_id, path, stream, opts \\ []) do
     {:ok, _status, blob, _dest} = store_stream(stream)
     Nodes.create_file(repository_id, path, blob.id, opts)
+  end
+
+  def get_file(repository_id, path, dest_file) do
+    case get_stream(repository_id, path) do
+      nil ->
+        nil
+
+      stream ->
+        FileUtils.store(stream, dest_file)
+    end
   end
 
   def get_stream(repository_id, path) do
@@ -51,11 +67,10 @@ defmodule Bindepot.Core.Assets do
 
   defp store_file(file_path) do
     # We already have a file, just need to compute hash and copy/move it
-    hashes =
-      File.stream!(file_path, 4096)
-      |> compute_hash()
-
-    store_blob(file_path, hashes)
+    file_path
+    |> File.stream!(4096)
+    |> FileUtils.hash(@hashes)
+    |> then(&store_blob(file_path, &1))
   end
 
   defp store_stream(stream) do
@@ -63,7 +78,7 @@ defmodule Bindepot.Core.Assets do
     File.mkdir_p!(temp_dir)
 
     temp_file = Path.join(temp_dir, UUID.uuid4())
-    hashes = write_file(stream, temp_file)
+    hashes = FileUtils.hash_and_store(stream, @hashes, temp_file)
 
     store_blob(temp_file, hashes)
   end
@@ -90,7 +105,7 @@ defmodule Bindepot.Core.Assets do
       # New blob - ok to replace file
       {:ok, blob_struct, :new} ->
         with :ok <- File.mkdir_p!(dest_dir),
-             :ok <- move_file(source_file, dest_file) do
+             :ok <- FileUtils.move_file(source_file, dest_file) do
           {:ok, :new, blob_struct, dest_file}
         else
           {:error, reason} ->
@@ -105,65 +120,6 @@ defmodule Bindepot.Core.Assets do
       {:error, _} ->
         {:error, "failed to store BLOB"}
     end
-  end
-
-  # Moves file by either renaming if source and destination are on the same
-  # filesystem or copy/delete if on different filesystems.
-  # Both source and destination are file names.
-  @spec move_file(String.t(), String.t()) :: :ok | {:error, File.posix()}
-  defp move_file(src, dst) do
-    case is_same_fs(src, dst) do
-      # both locations are on the same filesystem, can move
-      true ->
-        File.rename(src, dst)
-
-      # source and destination on different filesystems. copy/delete
-      false ->
-        with :ok <- File.cp(src, dst) do
-          # ignore result as we only care that file ended up where we wanted.
-          File.rm(src)
-          :ok
-        else
-          {:error, posix} ->
-            {:error, posix}
-        end
-
-      {:error, posix} ->
-        {:error, posix}
-    end
-  end
-
-  defp is_same_fs(src, dst) do
-    with {:ok, s_stat} <- File.stat(src),
-         {:ok, d_stat} <- File.stat(Path.dirname(dst)) do
-      s_stat.major_device == s_stat.minor_device and
-        d_stat.major_device == d_stat.minor_device
-    else
-      {:error, posix} ->
-        {:error, posix}
-    end
-  end
-
-  defp write_file(stream, file_path) do
-    {:ok, res} = File.open(file_path, [:write, :binary], &compute_hash(stream, &1))
-    res
-  end
-
-  defp compute_hash(stream, io \\ nil) do
-    hashes =
-      stream
-      |> Enum.reduce(
-        Hasher.hash_init([:md5, :sha, :sha256, :blake2b]),
-        &hashing_reducer(&1, &2, io)
-      )
-      |> Hasher.hash_final()
-
-    Hasher.to_string(hashes)
-  end
-
-  defp hashing_reducer(chunk, hash_state, io) do
-    io && IO.binwrite(io, chunk)
-    Hasher.hash_update(hash_state, chunk)
   end
 
   defp store_path() do

@@ -1,6 +1,57 @@
 defmodule BindepotWeb.Api.Utils do
   alias Plug.Conn
 
+  def download(url) do
+    temp_dir = Path.join(store_path(), "temp")
+
+    File.mkdir_p!(temp_dir)
+    temp_file = Path.join(temp_dir, UUID.uuid4())
+    download(url, temp_file)
+  end
+
+  @doc ~S"""
+    Downloads content pointed by URL and stores in a file.
+  """
+  @spec download(String.t(), String.t()) :: String.t() | {:error, term()}
+  def download(url, file_name) do
+    request = Finch.build(:get, url)
+
+    # Open the file once
+    case File.open(file_name, [:write, :binary]) do
+      {:ok, file} ->
+        result =
+          Finch.stream(request, MyFinch, nil, fn
+            {:status, 200}, acc ->
+              acc
+
+            {:status, _status}, acc ->
+              acc
+
+            {:headers, _headers}, acc ->
+              acc
+
+            {:data, chunk}, acc ->
+              IO.binwrite(file, chunk)
+              acc
+          end)
+
+        File.close(file)
+
+        case result do
+          {:ok, _acc} ->
+            file_name
+
+          {:error, ex, acc} ->
+            # Delete incomplete file
+            File.rm(file_name)
+            {:error, "download error"}
+        end
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
   def send_chunked_stream(conn, filename, stream) do
     conn
     |> Conn.put_resp_header(
@@ -114,5 +165,9 @@ defmodule BindepotWeb.Api.Utils do
         end
       end
     end)
+  end
+
+  defp store_path() do
+    Application.get_env(:bindepot, :data_dir)
   end
 end

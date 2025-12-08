@@ -7,6 +7,22 @@ defmodule Bindepot.Core.DistFiles do
   alias Bindepot.Core.DistFile
   alias Bindepot.Core.Node
 
+  def all(repository_id, package_name) do
+    q =
+      from p in Package,
+        inner_join: v in Version,
+        on: p.id == v.package_id,
+        inner_join: f in DistFile,
+        on: v.id == f.version_id,
+        inner_join: n in Node,
+        on: f.node_id == n.id,
+        where: n.repository_id == ^repository_id and p.name == ^package_name,
+        select: n,
+        preload: [:blobs]
+
+    Repo.all(q)
+  end
+
   def create(name, mime_type, version, package_name, package_type, %Node{} = node) do
     # Repo.transact(fn ->
     {:ok, pkg} =

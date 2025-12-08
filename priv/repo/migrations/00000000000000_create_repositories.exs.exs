@@ -34,6 +34,7 @@ defmodule Bindepot.Repo.Migrations.CreateRepositories do
       add :type, :integer, null: false
       add :path, :string, null: false
       add :name, :string, null: false
+      add :properties, :string, null: true
 
       add :repository_id,
           references("repositories",
