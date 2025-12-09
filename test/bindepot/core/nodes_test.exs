@@ -214,5 +214,24 @@ defmodule Bindepot.Core.NodesTest do
                  context.blob1.id
                )
     end
+
+    test "creating file with properties", context do
+      set_props =
+        Jason.encode!(%{
+          "tag" => "tag1",
+          "description" => "file1 description"
+        })
+
+      assert {:ok, _} =
+               Nodes.create_file(
+                 context.repo1.id,
+                 "/A/file1",
+                 context.blob1.id,
+                 properties: set_props
+               )
+
+      assert %{properties: props} = Nodes.get_file(context.repo1.id, "/A/file1")
+      assert set_props == props
+    end
   end
 end

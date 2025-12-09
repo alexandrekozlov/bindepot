@@ -73,12 +73,12 @@ defmodule Bindepot.Core.Nodes do
 
     case node_params do
       [] ->
-        {:error, "effective path is epmty", nil}
+        {:error, "effective path is empty", nil}
 
       _ ->
         node_params
         |> then(fn [file_node | rest] ->
-          [%{file_node | type: :file} |> Map.put(:blob_id, blob_id) | rest]
+          [to_file_node(file_node, blob_id, opts) | rest]
         end)
         |> apply_node_params(opts)
     end
@@ -116,6 +116,15 @@ defmodule Bindepot.Core.Nodes do
     path |> String.split("/", trim: true) |> do_items_from_path()
   end
 
+  defp to_file_node(node, blob_id, opts \\ []) do
+    props = Keyword.get(opts, :properties)
+
+    node
+    |> Map.put(:type, :file)
+    |> Map.put(:properties, props)
+    |> Map.put(:blob_id, blob_id)
+  end
+
   defp create_node_params(path, repository_id) do
     path
     |> items_from_path()
@@ -145,10 +154,10 @@ defmodule Bindepot.Core.Nodes do
   defp insert_or_update_node(node_attributes, opts) do
     existing_node =
       if Keyword.get(opts, :replace, false) and node_attributes.type == :file do
-        Repo.get_by(Node, Map.delete(node_attributes, :blob_id))
+        Repo.get_by(Node, Map.drop(node_attributes, [:blob_id, :properties]))
       else
         Repo.get_by(Node, node_attributes)
-      end
+      end |> IO.inspect()
 
     node = existing_node || %Node{}
 
