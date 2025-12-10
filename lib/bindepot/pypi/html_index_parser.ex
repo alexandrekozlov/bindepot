@@ -1,4 +1,4 @@
-defmodule Bindepot.PyPI.HtmlIndexParser do
+defmodule Bindepot.Pypi.HtmlIndexParser do
   @moduledoc ~S"""
     Streaming-safe HTML <a> tag extractor using regular expressions.
 
@@ -81,10 +81,14 @@ defmodule Bindepot.PyPI.HtmlIndexParser do
             entry = extract_entry(tag_attrs, content)
 
             # Remaining buffer after this tag
-            offset = start + len - off
-            rest = String.slice(buffer, offset, byte_size(buffer) - offset)
+            new_offset = start + len
+            rest = String.slice(buffer, new_offset - off, byte_size(buffer))
 
-            {[entry | acc], rest, offset}
+            case entry do
+              %{href: nil} -> {acc, rest, new_offset}
+              %{content: ""} -> {acc, rest, new_offset}
+              _ -> {[entry | acc], rest, new_offset}
+            end
           end)
 
         {elem(r, 0), elem(r, 1)}
