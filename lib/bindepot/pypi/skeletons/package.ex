@@ -1,4 +1,4 @@
-defmodule Bindepot.PyPI.Package do
+defmodule Bindepot.Pypi.Package do
   use Ecto.Schema
   import Ecto.Changeset
 

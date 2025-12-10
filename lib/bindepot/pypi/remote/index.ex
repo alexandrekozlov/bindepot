@@ -12,8 +12,8 @@ defmodule Bindepot.Pypi.Remote.Index do
     `repository_id` - location where the index is to be cached.
 
   """
-  def get_remote_index(repository_id, repo_index_url) do
-    node = Nodes.get_file(repository_id, @cached_repo_index_path)
+  def fetch_remote_repo_index(repository_id, repo_index_url, store_path) do
+    node = Nodes.get_file(repository_id, store_path)
 
     headers =
       if is_nil(node) do
@@ -50,7 +50,7 @@ defmodule Bindepot.Pypi.Remote.Index do
     case resp.status do
       # Not modified
       304 ->
-        Assets.get_file(repository_id, @cached_repo_index_path, index_file)
+        Assets.get_file(repository_id, store_path, index_file)
 
       # OK
       200 ->
@@ -59,9 +59,10 @@ defmodule Bindepot.Pypi.Remote.Index do
         etag =
           Enum.find_value(resp.headers, nil, &if(elem(&1, 0) == @etag_header, do: elem(&1, 1)))
 
-        Assets.put_file(repository_id, @cached_repo_index_path, index_file,
+        Assets.put_file(repository_id, store_path, index_file,
           properties: Jason.encode!(%{etag: etag}),
-          replace: true
+          replace: true,
+          keep_source: true
         )
     end
   end

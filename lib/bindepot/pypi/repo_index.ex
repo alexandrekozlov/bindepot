@@ -1,7 +1,7 @@
 defmodule Bindepot.Pypi.RepoIndex do
   alias Bindepot.Core.Packages
   alias Bindepot.Core.DistFiles
-  alias Bindepot.PyPI.HtmlIndexParser
+  alias Bindepot.Pypi.HtmlIndexParser
 
   def get_local_repo_index(repository_id) do
     repository_id

@@ -1,6 +1,6 @@
 defmodule Bindepot.PackageAdapters do
   @adapters %{
-    "pypi" => Bindepot.PyPI.API,
+    "pypi" => Bindepot.Pypi.API,
     "npm" => Bindepot.Npm.API,
     "rpm" => Bindepot.Rpm.API,
     "generic" => Bindepot.Generic.API,

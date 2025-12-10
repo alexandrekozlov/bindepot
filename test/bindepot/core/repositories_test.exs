@@ -2,7 +2,6 @@ defmodule Bindepot.Core.RepositoryTest do
   use Bindepot.DataCase
 
   alias Bindepot.Core.Repositories
-  alias Bindepot.Core.Assets
 
   describe "all/1" do
     setup do

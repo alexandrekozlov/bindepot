@@ -2,7 +2,7 @@ defmodule Bindepot.Pypi do
   alias Bindepot.Core.Assets
   alias Bindepot.Core.DistFiles
 
-  def publish(repository, file, metadata, opts \\ []) do
+  def publish(repository, file, metadata, _opts \\ []) do
     store_path =
       "/" <>
         Enum.join([metadata.package_name, metadata.package_version, metadata.asset_filename], "/")
@@ -22,6 +22,6 @@ defmodule Bindepot.Pypi do
     pkg
   end
 
-  def get_package_metadata(file) do
+  def get_package_metadata(_file) do
   end
 end

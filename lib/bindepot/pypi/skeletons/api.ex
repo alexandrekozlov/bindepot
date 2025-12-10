@@ -1,4 +1,4 @@
-defmodule Bindepot.PyPI.API do
+defmodule Bindepot.Pypi.API do
   @moduledoc "PyPI-specific API: upload, list_packages, get_package, delete_package."
 
   import Ecto.Query
@@ -6,7 +6,7 @@ defmodule Bindepot.PyPI.API do
   require Logger
   alias Bindepot.Repo
   alias Bindepot.Core.Repositories, as: CoreRepos
-  alias Bindepot.PyPI.{Package, Release, DistFile}
+  alias Bindepot.Pypi.{Package, Release, DistFile}
   alias Bindepot.Storage.FilesystemStorage
 
   # List packages for a repo

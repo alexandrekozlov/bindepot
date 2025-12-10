@@ -51,7 +51,7 @@ defmodule Bindepot.Pypi.PackageIndexParserTest do
 
       assert [
                %{href: "a1.whl", content: "A1", hash: nil, attrs: %{}},
-               %{href: "a3.whl", content: "A3", hash: nil, attrs: %{}},
+               %{href: "a3.whl", content: "A3", hash: nil, attrs: %{}}
              ] = result
     end
 

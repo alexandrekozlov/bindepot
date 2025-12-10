@@ -41,7 +41,7 @@ defmodule BindepotWeb.Api.Utils do
           {:ok, _acc} ->
             file_name
 
-          {:error, ex, acc} ->
+          {:error, _ex, _acc} ->
             # Delete incomplete file
             File.rm(file_name)
             {:error, "download error"}

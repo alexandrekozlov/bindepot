@@ -1,40 +1,36 @@
 defmodule Bindepot.Core.FileUtils do
   alias Bindepot.Core.Hasher
 
-  @doc """
-    Moves a file by either renaming if source and destination are on the same
-    filesystem or copy/delete if on different filesystems. Both source and
-    destination are file names.
+  @doc ~S"""
+    Moves a file.
+
+    If source and destination are on the same filesystem then uses `rename/2`.
+    If source and destination are on different filesystems, then uses copy/delete.
 
     Both `src` and `dst` are file names.
+
+    `:create_dir` - when `false`, does not create destination directories (defaults to `true`)
+
   """
-  @spec move_file(String.t(), String.t()) :: :ok | {:error, File.posix()}
-  def move_file(src, dst) do
-    case is_same_fs(src, Path.dirname(dst)) do
-      # both locations are on the same filesystem, can move
-      true ->
-        File.rename(src, dst)
+  @spec move_file(String.t(), String.t(), [{:create_dir, boolean()}]) ::
+          :ok | {:error, File.posix()}
+  def move_file(src, dst, opts \\ []) do
+    dst_dir = Path.dirname(dst)
 
-      # source and destination on different filesystems. copy/delete
-      false ->
-        with :ok <- File.cp(src, dst) do
-          # ignore result as we only care that file ended up where we wanted.
-          File.rm(src)
-          :ok
-        else
-          {:error, posix} ->
-            {:error, posix}
-        end
+    opts
+    |> Keyword.validate!(create_dir: true)
+    |> Keyword.get(:create_dir)
+    |> do_ensure_dir(dst_dir)
 
-      {:error, posix} ->
-        {:error, posix}
-    end
+    src
+    |> same_fs?(dst_dir)
+    |> do_move_file(src, dst)
   end
 
   @doc """
     Returns true if both source and destination are on the same filesystem.
   """
-  def is_same_fs(src, dst) do
+  def same_fs?(src, dst) do
     with {:ok, s_stat} <- File.stat(src),
          {:ok, d_stat} <- File.stat(Path.dirname(dst)) do
       s_stat.major_device == s_stat.minor_device and
@@ -72,5 +68,31 @@ defmodule Bindepot.Core.FileUtils do
       |> Hasher.finalize()
       |> Hasher.to_string()
     end)
+  end
+
+  defp do_ensure_dir(true, dir) do
+    File.mkdir_p(dir)
+  end
+
+  defp do_ensure_dir(false, _dir) do
+    :ok
+  end
+
+  defp do_move_file(true = _is_same_fs, src, dst) do
+    File.rename(src, dst)
+  end
+
+  defp do_move_file(false = _is_same_fs, src, dst) do
+    with :ok <- File.cp(src, dst),
+         _ <- File.rm(src) do
+      :ok
+    else
+      {:error, posix} ->
+        {:error, posix}
+    end
+  end
+
+  defp do_move_file({:error, posix} = _is_same_fs, _src, _dst) do
+    {:error, posix}
   end
 end

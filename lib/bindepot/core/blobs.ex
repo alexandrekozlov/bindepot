@@ -1,5 +1,6 @@
 defmodule Bindepot.Core.Blobs do
   import Ecto.Query, warn: false
+  alias Bindepot.Core.FileUtils
   alias Ecto.Changeset
 
   alias Bindepot.Repo
@@ -58,6 +59,92 @@ defmodule Bindepot.Core.Blobs do
         |> Repo.update()
         |> parse_status(:existing)
     end
+  end
+
+  @type hashes :: %{required(:sha256) => String.t(), optional(atom) => String.t()}
+
+  @doc """
+    Store file as BLOB.
+
+    `hashes` is a map of hash algorithm and hash value.
+
+    The keys correspond to hashing algorithms supported by `:crypto`. This
+    function looks for the following keys:
+     * `:md5` - MD5
+     * `:sha` - SHA-1
+     * `:sha256` - SHA-256
+     * `:blake2b` - BLAKE2b
+
+     All keys are optional except for `:sha256`.
+
+    Options:
+
+    `:copy` - when `true`, do not delete source file (defaults to `false`).
+
+  """
+  @spec store(String.t(), hashes(), copy: boolean()) ::
+          {:error, any()} | {:ok, :existing | :new, Bindepot.Core.Blob.t(), binary()}
+  def store(source_file, hashes = %{}, opts \\ []) do
+    do_copy? =
+      opts
+      |> Keyword.validate!(copy: false)
+      |> Keyword.fetch!(:copy)
+
+    %{size: file_size} = File.stat!(source_file)
+    sha256 = Map.fetch!(hashes, :sha256)
+    dest_file = get_blob_path(sha256)
+
+    %{
+      size: file_size,
+      md5: Map.get(hashes, :md5),
+      sha1: Map.get(hashes, :sha),
+      sha256: sha256,
+      blake2: Map.get(hashes, :blake2b)
+    }
+    |> put()
+    |> do_create_blob(source_file, dest_file, do_copy?)
+  end
+
+  @doc """
+    Given BLOB identity, returns absolute path to the BLOB.
+
+    `blob_identity` is an arbitrary string, but typical BLOB's hash.
+  """
+  def get_blob_path(blob_identity) do
+    Path.join([
+      store_path(),
+      String.slice(blob_identity, 0, 2),
+      blob_identity
+    ])
+  end
+
+  defp do_create_blob({:ok, blob_struct, :new}, src, dst, true = _is_copy) do
+    with :ok <- File.mkdir_p(Path.dirname(dst)),
+         :ok <- File.cp(src, dst) do
+      {:ok, :new, blob_struct, dst}
+    else
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp do_create_blob({:ok, blob_struct, :new}, src, dst, false = _is_copy) do
+    with :ok <- FileUtils.move_file(src, dst) do
+      {:ok, :new, blob_struct, dst}
+    else
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp do_create_blob({:ok, blob_struct, :existing}, _src, dst, _is_copy) do
+    {:ok, :existing, blob_struct, dst}
+  end
+
+  defp do_create_blob({:error, reason}, _src, _dst, _is_copy) do
+    {:error, reason}
+  end
+
+  defp store_path() do
+    Application.get_env(:bindepot, :data_dir)
   end
 
   defp parse_status(status, disposition) do
