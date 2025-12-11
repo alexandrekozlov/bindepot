@@ -73,7 +73,9 @@ defmodule Bindepot.Core.Assets do
 
   defp do_get_stream_from_node(%Node{type: :file, blob_id: blob_id}) do
     with %Blob{sha256: sha256} <- Blobs.get(blob_id) do
-      Blobs.get_blob_path(sha256)
+      sha256
+      |> Blobs.get_blob_path()
+      |> File.stream!(4096)
     else
       _ ->
         nil

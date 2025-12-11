@@ -44,26 +44,26 @@ defmodule Bindepot.Pypi.Remote.Index do
         headers
       )
       |> Finch.request!(Bindepot.Finch)
+      |> IO.inspect()
 
     index_file = Temp.path!()
+    cache_index(resp, repository_id, store_path, index_file)
+    Bindepot.Pypi.HtmlIndexParser.extract(File.stream!(index_file, 65536, [encoding: :latin1]))
+  end
 
-    case resp.status do
-      # Not modified
-      304 ->
-        Assets.get_file(repository_id, store_path, index_file)
+  def cache_index(%{status: 304} = _resp, repository_id, store_path, index_file) do
+    Assets.get_file(repository_id, store_path, index_file)
+  end
 
-      # OK
-      200 ->
-        File.write!(index_file, resp.body, [:binary, :write])
+  def cache_index(%{status: 200} = resp, repository_id, store_path, index_file) do
+    File.write!(index_file, resp.body, [:binary, :write])
 
-        etag =
-          Enum.find_value(resp.headers, nil, &if(elem(&1, 0) == @etag_header, do: elem(&1, 1)))
+    etag = Enum.find_value(resp.headers, nil, &if(elem(&1, 0) == @etag_header, do: elem(&1, 1)))
 
-        Assets.put_file(repository_id, store_path, index_file,
-          properties: Jason.encode!(%{etag: etag}),
-          replace: true,
-          keep_source: true
-        )
-    end
+    Assets.put_file(repository_id, store_path, index_file,
+      properties: Jason.encode!(%{etag: etag}),
+      replace: true,
+      keep_source: true
+    )
   end
 end
