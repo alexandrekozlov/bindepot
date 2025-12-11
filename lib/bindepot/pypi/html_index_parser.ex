@@ -47,7 +47,7 @@ defmodule Bindepot.Pypi.HtmlIndexParser do
   def extract(stream) do
     stream
     |> Enum.reduce({[], ""}, fn chunk, {acc, buffer} ->
-      buffer = buffer <> chunk
+       buffer = buffer <> chunk
       {matches, rest} = extract_from_buffer(buffer)
       {[matches | acc], rest}
     end)
@@ -76,13 +76,13 @@ defmodule Bindepot.Pypi.HtmlIndexParser do
             [{start, len}, {tag_start, tag_len}, {content_start, content_len}] =
               capture
 
-            tag_attrs = String.slice(buffer, tag_start - off, tag_len)
-            content = String.slice(buffer, content_start - off, content_len)
+            tag_attrs = binary_slice(buffer, tag_start - off, tag_len)
+            content = binary_slice(buffer, content_start - off, content_len)
             entry = extract_entry(tag_attrs, content)
 
             # Remaining buffer after this tag
             new_offset = start + len
-            rest = String.slice(buffer, new_offset - off, byte_size(buffer))
+            rest = binary_slice(buffer, new_offset - off, byte_size(buffer))
 
             case entry do
               %{href: nil} -> {acc, rest, new_offset}
@@ -136,6 +136,6 @@ defmodule Bindepot.Pypi.HtmlIndexParser do
   defp sliding_tail(buffer) do
     # Keep last @max_buffer bytes
     start = byte_size(buffer) - @max_buffer
-    String.slice(buffer, start, @max_buffer)
+    binary_slice(buffer, start, @max_buffer)
   end
 end
