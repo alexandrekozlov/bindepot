@@ -68,9 +68,9 @@ defmodule Bindepot.Pypi.Remote.Index do
   end
 
   def merge_index(index1) do
-    index1 |>
-    Enum.into(%{}, &({&1.name, &1}))
+    index1
+    |> Enum.into(%{}, &{&1.name, &1})
+
     Map.merge()
   end
-
 end

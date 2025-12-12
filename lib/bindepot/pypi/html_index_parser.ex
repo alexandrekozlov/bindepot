@@ -51,7 +51,8 @@ defmodule Bindepot.Pypi.HtmlIndexParser do
       extract_from_buffer(buffer, acc)
     end)
     |> elem(0)
-    |> Enum.reverse()
+    # |> Enum.reverse()
+    |> Enum.into(%{}, &{&1.name, &1})
   end
 
   #
