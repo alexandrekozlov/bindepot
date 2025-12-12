@@ -48,11 +48,9 @@ defmodule Bindepot.Pypi.HtmlIndexParser do
     stream
     |> Enum.reduce({[], ""}, fn chunk, {acc, buffer} ->
       buffer = buffer <> chunk
-      {matches, rest} = extract_from_buffer(buffer)
-      {[matches | acc], rest}
+      extract_from_buffer(buffer, acc)
     end)
     |> elem(0)
-    |> List.flatten()
     |> Enum.reverse()
   end
 
@@ -61,7 +59,7 @@ defmodule Bindepot.Pypi.HtmlIndexParser do
   #  * Extract one <a>...</a> match at a time
   #  * Return remaining unconsumed tail
   #
-  defp extract_from_buffer(buffer) do
+  defp extract_from_buffer(buffer, entries) do
     captures = Regex.scan(@tag_regex, buffer, return: :index)
 
     case captures do
@@ -71,8 +69,8 @@ defmodule Bindepot.Pypi.HtmlIndexParser do
         {[], tail}
 
       [_ | _] ->
-        r =
-          Enum.reduce(captures, {[], buffer, 0}, fn capture, {acc, buffer, off} ->
+        {acc, rest, _noff} =
+          Enum.reduce(captures, {entries, buffer, 0}, fn capture, {acc, buffer, off} ->
             [{start, len}, {tag_start, tag_len}, {content_start, content_len}] =
               capture
 
@@ -91,7 +89,7 @@ defmodule Bindepot.Pypi.HtmlIndexParser do
             end
           end)
 
-        {elem(r, 0), elem(r, 1)}
+        {acc, rest}
     end
   end
 
