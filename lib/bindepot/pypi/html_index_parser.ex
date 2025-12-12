@@ -36,9 +36,9 @@ defmodule Bindepot.Pypi.HtmlIndexParser do
   Returns:
     [
       %{
-        href: "...",
-        content: "...",
-        attrs: %{...},
+        uri: "...",
+        name: "...",
+        metadata: %{...},
         hash: %{algo: ..., digest: ...} | nil
       },
       ...
@@ -47,7 +47,7 @@ defmodule Bindepot.Pypi.HtmlIndexParser do
   def extract(stream) do
     stream
     |> Enum.reduce({[], ""}, fn chunk, {acc, buffer} ->
-       buffer = buffer <> chunk
+      buffer = buffer <> chunk
       {matches, rest} = extract_from_buffer(buffer)
       {[matches | acc], rest}
     end)
@@ -85,8 +85,8 @@ defmodule Bindepot.Pypi.HtmlIndexParser do
             rest = binary_slice(buffer, new_offset - off, byte_size(buffer))
 
             case entry do
-              %{href: nil} -> {acc, rest, new_offset}
-              %{content: ""} -> {acc, rest, new_offset}
+              %{uri: nil} -> {acc, rest, new_offset}
+              %{name: ""} -> {acc, rest, new_offset}
               _ -> {[entry | acc], rest, new_offset}
             end
           end)
@@ -113,15 +113,15 @@ defmodule Bindepot.Pypi.HtmlIndexParser do
 
         _ ->
           case Regex.run(@hash_regex, href) do
-            [_, algo, digest] -> %{algo: algo, digest: digest}
+            [_, algo, digest] -> {algo, digest}
             _ -> nil
           end
       end
 
     %{
-      href: href,
-      content: content,
-      attrs: attrs,
+      uri: href,
+      name: content,
+      metadata: attrs,
       hash: hash
     }
   end

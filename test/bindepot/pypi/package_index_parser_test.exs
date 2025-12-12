@@ -13,8 +13,8 @@ defmodule Bindepot.Pypi.PackageIndexParserTest do
 
       assert [
                %{
-                 href: "pkg.whl",
-                 content: "Package",
+                 uri: "pkg.whl",
+                 name: "Package",
                  hash: nil
                }
              ] = result
@@ -31,8 +31,8 @@ defmodule Bindepot.Pypi.PackageIndexParserTest do
         |> HtmlIndexParser.extract()
 
       assert [
-               %{href: "a1.whl", content: "A1", hash: nil, attrs: %{}},
-               %{href: "a2.whl", content: "A2", hash: nil, attrs: %{}}
+               %{uri: "a1.whl", name: "A1", hash: nil, metadata: %{}},
+               %{uri: "a2.whl", name: "A2", hash: nil, metadata: %{}}
              ] = result
     end
 
@@ -50,8 +50,10 @@ defmodule Bindepot.Pypi.PackageIndexParserTest do
         |> HtmlIndexParser.extract()
 
       assert [
-               %{href: "a1.whl", content: "A1", hash: nil, attrs: %{}},
-               %{href: "a3.whl", content: "A3", hash: nil, attrs: %{}}
+               %{uri: "a1.whl", name: "A1", hash: nil, metadata: %{}},
+               # %{uri: nil, name: "A2", hash: nil, metadata: %{"xhref" => "a2.whl"}},
+               # %{uri: "test.whl", name: "", hash: nil, metadata: %{}},
+               %{uri: "a3.whl", name: "A3", hash: nil, metadata: %{}}
              ] = result
     end
 
@@ -65,8 +67,8 @@ defmodule Bindepot.Pypi.PackageIndexParserTest do
 
       assert [
                %{
-                 href: "part1.whl",
-                 content: "PKG"
+                 uri: "part1.whl",
+                 name: "PKG"
                }
              ] = result
     end
@@ -76,11 +78,11 @@ defmodule Bindepot.Pypi.PackageIndexParserTest do
 
       [entry] = HtmlIndexParser.extract([html])
 
-      assert entry.href == "ordered.whl"
-      assert entry.content == "X"
+      assert entry.uri == "ordered.whl"
+      assert entry.name == "X"
 
-      assert entry.attrs["data-x"] == "1"
-      assert entry.attrs["rel"] == "nofollow"
+      assert entry.metadata["data-x"] == "1"
+      assert entry.metadata["rel"] == "nofollow"
     end
 
     test "extracts hash digest from fragment" do
@@ -88,12 +90,8 @@ defmodule Bindepot.Pypi.PackageIndexParserTest do
 
       [entry] = HtmlIndexParser.extract([html])
 
-      assert entry.href == "pkg.whl#sha256=abcdef1234"
-
-      assert entry.hash == %{
-               algo: "sha256",
-               digest: "abcdef1234"
-             }
+      assert entry.uri == "pkg.whl#sha256=abcdef1234"
+      assert entry.hash == {"sha256", "abcdef1234"}
     end
 
     test "extracts all attributes" do
@@ -101,8 +99,8 @@ defmodule Bindepot.Pypi.PackageIndexParserTest do
 
       [entry] = HtmlIndexParser.extract([html])
 
-      assert entry.attrs["data-a"] == "123"
-      assert entry.attrs["data-b"] == "456"
+      assert entry.metadata["data-a"] == "123"
+      assert entry.metadata["data-b"] == "456"
     end
   end
 end

@@ -13,7 +13,7 @@ defmodule Bindepot.Pypi.RepoIndex do
   def get_local_package_index(repository_id, package_name) do
     repository_id
     |> DistFiles.all(package_name)
-    |> Enum.map(&%{name: &1.name, uri: &1.name, hash_name: "sha256", hash: &1.blob.sha256})
+    |> Enum.map(&%{name: &1.name, uri: &1.name, hash: {"sha256", &1.blob.sha256}})
     |> Enum.sort(&(&1.name >= &2.name))
   end
 
@@ -27,8 +27,12 @@ defmodule Bindepot.Pypi.RepoIndex do
     ~s(<a href="#{uri}">#{name}</a>)
   end
 
-  def to_html_package_index_entry(%{name: name, uri: uri, hash_name: hash_name, hash: hash}) do
-    ~s(<a href="#{uri}\##{hash_name}=#{hash}">#{name}</a>)
+  def to_html_repo_index_entry(%{name: name, uri: uri, hash: nil}) do
+    ~s(<a href="#{uri}">#{name}</a>)
+  end
+
+  def to_html_package_index_entry(%{name: name, uri: uri, hash: {algo, digest}}) do
+    ~s(<a href="#{uri}\##{algo}=#{digest}">#{name}</a>)
   end
 
   def extract_repo_index(stream) do

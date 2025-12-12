@@ -48,7 +48,7 @@ defmodule Bindepot.Pypi.Remote.Index do
 
     index_file = Temp.path!()
     cache_index(resp, repository_id, store_path, index_file)
-    Bindepot.Pypi.HtmlIndexParser.extract(File.stream!(index_file, 65536, [encoding: :latin1]))
+    Bindepot.Pypi.HtmlIndexParser.extract(File.stream!(index_file, 65536, encoding: :latin1))
   end
 
   def cache_index(%{status: 304} = _resp, repository_id, store_path, index_file) do
@@ -66,4 +66,11 @@ defmodule Bindepot.Pypi.Remote.Index do
       keep_source: true
     )
   end
+
+  def merge_index(index1) do
+    index1 |>
+    Enum.into(%{}, &({&1.name, &1}))
+    Map.merge()
+  end
+
 end
