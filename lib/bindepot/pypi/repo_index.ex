@@ -3,6 +3,39 @@ defmodule Bindepot.Pypi.RepoIndex do
   alias Bindepot.Core.DistFiles
   alias Bindepot.Pypi.HtmlIndexParser
 
+  @etag_header "etag"
+  @is_none_match_header "If-None-Match"
+
+  def get_remote_index(url, etag \\ nil) do
+    stream_handler = fn
+      {:status, 200}, acc ->
+        {:cont, Map.put(acc, :status, :new)}
+
+      {:status, 304}, acc ->
+        {:cont, Map.put(acc, :status, :unchanged)}
+
+      {:status, status}, acc ->
+        {:halt, Map.put(acc, :status, status)}
+
+      {:headers, headers}, acc ->
+        {:cont, Map.put(acc, :etag, get_etag(headers))}
+
+      {:data, data}, acc ->
+        buffer = acc.tail <> data
+        {items, tail} = HtmlIndexParser.parse_buffer(buffer, acc.items)
+        {:cont, %{acc | items: items, tail: tail}}
+
+      {:trailers, trailers}, acc ->
+        {:cont, Map.put(acc, :etag, get_etag(trailers))}
+    end
+
+    etag_header = if is_nil(etag), do: [], else: [{@is_none_match_header, etag}]
+
+    Finch.build(:get, url, etag_header)
+    |> Finch.stream_while(Bindepot.Finch, %{items: %{}, tail: ""}, stream_handler)
+    |> then(&{elem(&1, 0), Map.delete(elem(&1, 1), :tail)})
+  end
+
   def get_local_repo_index(repository_id) do
     repository_id
     |> Packages.all()
@@ -17,29 +50,15 @@ defmodule Bindepot.Pypi.RepoIndex do
     |> Enum.sort(&(&1.name >= &2.name))
   end
 
-  def to_html_repo_simple_index(repo_index) do
-    [~s"\t</body>\n</html>\n"]
-    |> then(&[Enum.map(repo_index, fn e -> to_html_repo_index_entry(e) <> "<br>\n" end) | &1])
-    |> then(&[~s"<!DOCTYPE html>\n<html>\n\t<body>" | &1])
-  end
-
-  def to_html_repo_index_entry(%{name: name, uri: uri}) do
-    ~s(<a href="#{uri}">#{name}</a>)
-  end
-
-  def to_html_repo_index_entry(%{name: name, uri: uri, hash: nil}) do
-    ~s(<a href="#{uri}">#{name}</a>)
-  end
-
-  def to_html_package_index_entry(%{name: name, uri: uri, hash: {algo, digest}}) do
-    ~s(<a href="#{uri}\##{algo}=#{digest}">#{name}</a>)
-  end
-
   def extract_repo_index(stream) do
     stream
-    |> HtmlIndexParser.extract()
+    |> HtmlIndexParser.parse()
     |> Enum.reduce([], fn element, acc ->
       [%{name: element.content, uri: element.href} | acc]
     end)
+  end
+
+  defp get_etag(headers) do
+    Enum.find_value(headers, nil, &if(elem(&1, 0) == @etag_header, do: elem(&1, 1)))
   end
 end

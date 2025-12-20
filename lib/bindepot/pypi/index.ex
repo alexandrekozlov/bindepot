@@ -1,10 +1,16 @@
-defmodule Bindepot.Pypi.Remote.Index do
+defmodule Bindepot.Pypi.Index do
   alias Bindepot.Core.Assets
   alias Bindepot.Core.Nodes
+  alias Bindepot.Pypi.HtmlIndexParser
 
-  @cached_repo_index_path "/.pypi/index.html"
+  # @cached_repo_index_path "/.pypi/index.html"
   @etag_header "etag"
   @is_none_match_header "If-None-Match"
+
+  def fetch_remote_repo_index2(repo_index_url, etag \\ nil) do
+    etag_header = if is_nil(etag), do: [], else: [{@is_none_match_header, etag}]
+    Req.get(repo_index_url, headers: etag_header)
+  end
 
   @doc """
     Gets and caches the remote repository PyPI index.
@@ -33,29 +39,20 @@ defmodule Bindepot.Pypi.Remote.Index do
       |> IO.inspect()
 
     resp =
-      Finch.build(
-        :get,
-        # TODO: Get URL from repo or better from argument.
-        # the reason to take from argument, even though we already have repo is
-        # that it allows us to have a choice where to store the cached index.
-        # It can either be stored in the remote repo itself (/.pypi/index)
-        # or stored in a dedicated local repository that deals with cache only.
-        repo_index_url,
-        headers
-      )
+      Finch.build(:get, repo_index_url, headers)
       |> Finch.request!(Bindepot.Finch)
       |> IO.inspect()
 
     index_file = Temp.path!()
     cache_index(resp, repository_id, store_path, index_file)
-    Bindepot.Pypi.HtmlIndexParser.extract(File.stream!(index_file, 65536, encoding: :latin1))
+    HtmlIndexParser.parse(File.stream!(index_file, 65536))
   end
 
-  def cache_index(%{status: 304} = _resp, repository_id, store_path, index_file) do
+  defp cache_index(%{status: 304} = _resp, repository_id, store_path, index_file) do
     Assets.get_file(repository_id, store_path, index_file)
   end
 
-  def cache_index(%{status: 200} = resp, repository_id, store_path, index_file) do
+  defp cache_index(%{status: 200} = resp, repository_id, store_path, index_file) do
     File.write!(index_file, resp.body, [:binary, :write])
 
     etag = Enum.find_value(resp.headers, nil, &if(elem(&1, 0) == @etag_header, do: elem(&1, 1)))
@@ -65,12 +62,5 @@ defmodule Bindepot.Pypi.Remote.Index do
       replace: true,
       keep_source: true
     )
-  end
-
-  def merge_index(index1) do
-    index1
-    |> Enum.into(%{}, &{&1.name, &1})
-
-    Map.merge()
   end
 end
