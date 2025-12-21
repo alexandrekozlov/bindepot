@@ -1,6 +1,7 @@
 defmodule BindepotWeb.Api.PypiController do
   use BindepotWeb, :controller
 
+  alias Bindepot.Pypi.HtmlIndex
   alias Bindepot.Core.Repository
   alias Bindepot.Core.Assets
   alias Bindepot.Core.DistFiles
@@ -35,7 +36,7 @@ defmodule BindepotWeb.Api.PypiController do
   def local_repo_index(conn, _params) do
     body =
       RepoIndex.get_local_repo_index(conn.assigns.repository.id)
-      |> RepoIndex.to_html_repo_simple_index()
+      |> HtmlIndex.to_html_repo_simple_index()
 
     conn
     |> put_resp_content_type("text/html")

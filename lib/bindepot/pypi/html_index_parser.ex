@@ -65,7 +65,7 @@ defmodule Bindepot.Pypi.HtmlIndexParser do
       [] ->
         # Keep only the sliding tail of the buffer
         tail = sliding_tail(buffer)
-        {[], tail}
+        {%{}, tail}
 
       [_ | _] ->
         {acc, rest, _noff} =
