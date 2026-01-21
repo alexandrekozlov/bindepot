@@ -1,4 +1,5 @@
 defmodule Bindepot.Core.Nodes do
+  alias Bindepot.Core.NodeProperties
   alias Bindepot.Repo
   alias Bindepot.Core.Node
 
@@ -48,13 +49,9 @@ defmodule Bindepot.Core.Nodes do
   """
   @spec create_directory(any(), String.t()) :: {:ok, Node.t()} | {:error, String.t(), any()}
   def create_directory(repository_id, path) do
-    node_params =
-      create_node_params(path, repository_id)
-
-    case node_params do
-      [] -> {:error, "effective path is epmty", nil}
-      _ -> apply_node_params(node_params)
-    end
+    path
+    |> create_node_params(repository_id)
+    |> apply_node_params()
   end
 
   @doc ~S"""
@@ -75,7 +72,7 @@ defmodule Bindepot.Core.Nodes do
       node_params ->
         node_params
         |> then(fn [file_node | rest] ->
-          [to_file_node(file_node, blob_id, opts) | rest]
+          [to_file_node(file_node, blob_id) | rest]
         end)
         |> apply_node_params(opts)
     end
@@ -113,18 +110,10 @@ defmodule Bindepot.Core.Nodes do
     path |> String.split("/", trim: true) |> do_items_from_path()
   end
 
-  defp to_file_node(node, blob_id, opts) do
+  defp to_file_node(node, blob_id) do
     node
     |> Map.put(:type, :file)
     |> Map.put(:blob_id, blob_id)
-    |> then(&with_properties(&1, opts))
-  end
-
-  defp with_properties(node, opts) do
-    case Keyword.get(opts, :properties) do
-      nil -> node
-      props -> Map.put(node, :properties, props)
-    end
   end
 
   defp create_node_params(path, repository_id) do
@@ -135,15 +124,24 @@ defmodule Bindepot.Core.Nodes do
     end)
   end
 
+  defp apply_node_params(_node_params, _opts \\ [])
+
+  defp apply_node_params([] = node_params, _opts) when length(node_params) == 0 do
+    {:error, "effective path is epmty", nil}
+  end
+
   @spec apply_node_params([map()], keyword()) :: {:ok, Node.t()} | {:error, String.t()}
-  defp apply_node_params(node_entries, opts \\ []) do
+  defp apply_node_params(node_entries, opts) do
     Repo.transact(fn ->
       results =
         node_entries
         |> Enum.reverse()
         |> Enum.reduce([], &[insert_or_update_node(&1, opts) | &2])
 
-      case Enum.find(results, &(elem(&1, 0) != :ok)) do
+      case Enum.find(results, fn
+             :ok -> false
+             _ -> true
+           end) do
         nil -> List.first(results)
         error_node -> error_node
       end
@@ -153,19 +151,30 @@ defmodule Bindepot.Core.Nodes do
   # opts:
   #   replace: true | false - when true allows node replacement.
   #           this applies only for file nodes and ignored for directories.
+  # returns:
+  #   { :ok, node } on success
+  #   { :error, error } on failure
   defp insert_or_update_node(node_attributes, opts) do
-    existing_node =
-      if Keyword.get(opts, :replace, false) and node_attributes.type == :file do
-        Repo.get_by(Node, Map.drop(node_attributes, [:blob_id, :properties]))
-      else
-        Repo.get_by(Node, node_attributes)
-      end
+    props = Keyword.get(opts, :properties) || %{}
+    node = get_existing_node(node_attributes, opts) || %Node{}
 
-    node = existing_node || %Node{}
+    changeset = Node.changeset(node, node_attributes)
 
-    node
-    |> Node.changeset(node_attributes)
-    |> Repo.insert_or_update()
+    with {:ok, updated_node} <- Repo.insert_or_update(changeset),
+         :ok <- NodeProperties.add_properties(updated_node, props) do
+      {:ok, updated_node}
+    end
+  end
+
+  # opts:
+  #   replace: true | false - when true allows node replacement.
+  #           this applies only for file nodes and ignored for directories.
+  defp get_existing_node(node_attributes, opts) do
+    if Keyword.get(opts, :replace, false) and node_attributes.type == :file do
+      Repo.get_by(Node, Map.drop(node_attributes, [:blob_id, :properties]))
+    else
+      Repo.get_by(Node, node_attributes)
+    end
   end
 
   defp do_items_from_path(path, parent \\ nil, nodes \\ []) do

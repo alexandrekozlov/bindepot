@@ -11,6 +11,7 @@ defmodule Bindepot.Core.Node do
   alias Bindepot.Core.Repository
   alias Bindepot.Core.DistFile
   alias Bindepot.Core.Blob
+  alias Bindepot.Core.NodeProperty
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
@@ -21,19 +22,20 @@ defmodule Bindepot.Core.Node do
     field :type, NodeType
     field :path, :string
     field :name, :string
-    field :properties, :string
 
     belongs_to :repository, Repository
     belongs_to :blob, Blob
 
     has_one :dist_file, DistFile
+
+    has_many :node_properties, Bindepot.Core.NodeProperty
+    many_to_many :properties, Bindepot.Core.Property, join_through: NodeProperty
   end
 
   @type t :: %__MODULE__{
           type: NodeType.t(),
           path: String.t(),
           name: String.t(),
-          properties: String.t(),
           repository_id: term(),
           blob_id: term()
         }
@@ -44,7 +46,6 @@ defmodule Bindepot.Core.Node do
       :type,
       :path,
       :name,
-      :properties,
       :repository_id,
       :blob_id
     ])

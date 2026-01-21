@@ -36,6 +36,52 @@ defmodule Bindepot.Pypi.RepoIndex do
     |> then(&{elem(&1, 0), Map.delete(elem(&1, 1), :tail)})
   end
 
+  def get_remote_repo_index(repository_id) do
+    repo = Bindepot.Core.Repositories.get(repository_id)
+    node = Bindepot.Core.Nodes.get(repository_id, "/.pypi/index.json")
+    etag = get_node_etag(node)
+
+    case get_remote_index(Path.join(repo.url, "simple") <> "/", etag) do
+      {:ok, %{status: :new, etag: etag, items: items}} ->
+        Bindepot.Core.Assets.put_stream(
+          repository_id,
+          "/.pypi/index.json",
+          Jason.encode!(items),
+          replace: true,
+          properties: %{"etag" => etag}
+        )
+
+        {:ok, items}
+
+      {:ok, %{status: :unchanged}} ->
+        items =
+          Bindepot.Core.Assets.get_stream(repository_id, "/.pypi/index.json")
+          |> Jason.decode!()
+
+        {:ok, items}
+
+      {:ok, %{status: result}} when is_integer(result) ->
+        {:error, "HTTP result: #{result}"}
+
+      {:error, reason} ->
+        {:error, reason}
+
+      _ ->
+        {:error, "unexpected error"}
+    end
+  end
+
+  defp get_node_etag(nil) do
+    nil
+  end
+
+  defp get_node_etag(node) when not is_nil(node) do
+    case Jason.decode(node.properties) do
+      {:ok, props} -> Map.get(props, "etag")
+      {:error, _} -> nil
+    end
+  end
+
   def get_local_repo_index(repository_id) do
     repository_id
     |> Packages.all()

@@ -2,6 +2,13 @@ defmodule Bindepot.Repo.Migrations.CreateRepositories do
   use Ecto.Migration
 
   def change do
+    create table("properties", primary_key: false) do
+      add :id, :uuid, primary_key: true, null: false
+      add :name, :string, null: false
+    end
+
+    create unique_index("properties", [:name], nulls_distinct: true)
+
     create table("blobs", primary_key: false) do
       add :id, :uuid, primary_key: true, null: false
       add :size, :integer, null: false
@@ -29,6 +36,30 @@ defmodule Bindepot.Repo.Migrations.CreateRepositories do
     create index("repositories", [:type])
     create index("repositories", [:deleted_at])
 
+    create table("repositories_properties", primary_key: false) do
+      add :repository_id,
+          references("repositories",
+            column: :id,
+            type: :uuid,
+            on_delete: :delete_all,
+            on_update: :update_all
+          )
+
+      add :property_id,
+          references("properties",
+            column: :id,
+            type: :uuid,
+            on_delete: :delete_all,
+            on_update: :update_all
+          )
+
+      add :value, :string, null: true
+    end
+
+    create unique_index("repositories_properties", [:repository_id, :property_id],
+             nulls_distinct: true
+           )
+
     create table("nodes", primary_key: false) do
       add :id, :uuid, primary_key: true, null: false
       add :type, :integer, null: false
@@ -55,6 +86,28 @@ defmodule Bindepot.Repo.Migrations.CreateRepositories do
     end
 
     create unique_index("nodes", [:repository_id, :type, :path, :name])
+
+    create table("nodes_properties", primary_key: false) do
+      add :node_id,
+          references("nodes",
+            column: :id,
+            type: :uuid,
+            on_delete: :delete_all,
+            on_update: :update_all
+          )
+
+      add :property_id,
+          references("properties",
+            column: :id,
+            type: :uuid,
+            on_delete: :delete_all,
+            on_update: :update_all
+          )
+
+      add :value, :string, null: true
+    end
+
+    create unique_index("nodes_properties", [:node_id, :property_id], nulls_distinct: true)
 
     create table("packages", primary_key: false) do
       add :id, :uuid, primary_key: true, null: false

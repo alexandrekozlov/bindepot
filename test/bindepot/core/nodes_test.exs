@@ -1,4 +1,5 @@
 defmodule Bindepot.Core.NodesTest do
+  alias Bindepot.Core.NodeProperties
   use Bindepot.DataCase
 
   alias Bindepot.Core.Nodes
@@ -217,10 +218,7 @@ defmodule Bindepot.Core.NodesTest do
 
     test "creating file with properties", context do
       set_props =
-        Jason.encode!(%{
-          "tag" => "tag1",
-          "description" => "file1 description"
-        })
+        %{"tag" => "tag1", "description" => "file1 description"}
 
       assert {:ok, _} =
                Nodes.create_file(
@@ -230,7 +228,10 @@ defmodule Bindepot.Core.NodesTest do
                  properties: set_props
                )
 
-      assert %{properties: props} = Nodes.get_file(context.repo1.id, "/A/file1")
+      props =
+        Nodes.get_file(context.repo1.id, "/A/file1")
+        |> NodeProperties.get_properties()
+
       assert set_props == props
     end
   end
