@@ -156,7 +156,10 @@ defmodule Bindepot.Core.Nodes do
   #   { :error, error } on failure
   defp insert_or_update_node(node_attributes, opts) do
     props = Keyword.get(opts, :properties) || %{}
-    node = get_existing_node(node_attributes, opts) |> Repo.preload([:node_properties]) || %Node{}
+
+    node =
+      get_existing_node(node_attributes, opts)
+      |> Repo.preload([:node_properties]) || %Node{}
 
     np = NodeProperties.build_properties(props)
 
@@ -171,7 +174,7 @@ defmodule Bindepot.Core.Nodes do
   #           this applies only for file nodes and ignored for directories.
   defp get_existing_node(node_attributes, opts) do
     if Keyword.get(opts, :replace, false) and node_attributes.type == :file do
-      Repo.get_by(Node, Map.drop(node_attributes, [:blob_id, :properties]))
+      Repo.get_by(Node, Map.drop(node_attributes, [:blob_id]))
     else
       Repo.get_by(Node, node_attributes)
     end

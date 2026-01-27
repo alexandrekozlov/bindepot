@@ -200,7 +200,7 @@ defmodule Bindepot.Core.NodesTest do
                )
     end
 
-    test "replacing file should succeed", context do
+    test "replacing file should fail", context do
       assert {:ok, _} =
                Nodes.create_file(
                  context.repo1.id,
@@ -208,12 +208,31 @@ defmodule Bindepot.Core.NodesTest do
                  context.blob1.id
                )
 
+      assert {:error, _} =
+               Nodes.create_file(
+                 context.repo1.id,
+                 "/A/file1",
+                 context.blob2.id
+               )
+    end
+
+    test "explicitly replacing file should succeed", context do
       assert {:ok, _} =
                Nodes.create_file(
                  context.repo1.id,
                  "/A/file1",
                  context.blob1.id
                )
+
+      assert {:ok, %{blob_id: blob_id}} =
+               Nodes.create_file(
+                 context.repo1.id,
+                 "/A/file1",
+                 context.blob2.id,
+                 replace: true
+               )
+
+      assert blob_id == context.blob2.id
     end
 
     test "creating file with properties", context do
