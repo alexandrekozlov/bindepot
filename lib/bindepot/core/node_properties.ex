@@ -1,28 +1,62 @@
 defmodule Bindepot.Core.NodeProperties do
-  import Ecto.Changeset
+  import Ecto.Query
 
   alias Bindepot.Repo
+
   alias Bindepot.Core.Node
   alias Bindepot.Core.NodeProperty
+  alias Bindepot.Core.Properties
   alias Bindepot.Core.Property
 
-  def add_property(%Node{} = node, name, value) do
-    property =
-      Repo.get_by(Property, name: name) ||
-        %Property{}
-        |> Property.changeset(%{name: name})
-        |> Repo.insert_or_update!()
+  def build_properties(props) do
+    Enum.map(props, fn {n, v} ->
+      p = Properties.get_or_create_property(n)
 
-    %NodeProperty{}
-    |> NodeProperty.changeset(%{value: value})
-    |> put_assoc(:node, node)
-    |> put_assoc(:property, property)
-    |> Repo.insert_or_update()
+      %NodeProperty{
+        property_id: p.id,
+        value: v
+      }
+    end)
   end
 
-  def add_properties(%Node{} = node, props) do
+  def put_property(%Node{} = node, name, value) do
+    property = Properties.get_or_create_property(name)
+
+    Repo.insert(
+      %NodeProperty{
+        node_id: node.id,
+        property_id: property.id,
+        value: value
+      },
+      on_conflict: [set: [value: value]],
+      conflict_target: [:node_id, :property_id]
+    )
+  end
+
+  def get_property(%Node{} = node, name) do
+    q =
+      from np in NodeProperty,
+        join: p in Property,
+        on: p.id == np.property_id,
+        where: p.name == ^name and np.node_id == ^node.id,
+        select: np.value
+
+    Repo.one(q)
+  end
+
+  def delete_property(%Node{} = node, name) do
+    q =
+      from np in NodeProperty,
+        join: p in Property,
+        on: p.id == np.property_id,
+        where: np.node_id == ^node.id and p.name == ^name
+
+    Repo.delete_all(q)
+  end
+
+  def put_properties(%Node{} = node, props) do
     Enum.reduce_while(props, :ok, fn e, _ ->
-      case add_property(node, elem(e, 0), elem(e, 1)) do
+      case put_property(node, elem(e, 0), elem(e, 1)) do
         {:ok, _} -> {:cont, :ok}
         {:error, error} -> {:halt, {:error, error}}
       end
@@ -30,9 +64,13 @@ defmodule Bindepot.Core.NodeProperties do
   end
 
   def get_properties(%Node{} = node) do
-    node
-    |> Repo.preload(node_properties: [:property])
-    |> then(& &1.node_properties)
-    |> Enum.reduce(%{}, fn e, a -> Map.put(a, e.property.name, e.value) end)
+    q =
+      from np in NodeProperty,
+        join: p in Property,
+        on: p.id == np.property_id,
+        where: np.node_id == ^node.id,
+        select: {p.name, np.value}
+
+    q |> Repo.all() |> Enum.into(%{})
   end
 end

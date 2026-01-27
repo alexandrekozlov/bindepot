@@ -234,5 +234,72 @@ defmodule Bindepot.Core.NodesTest do
 
       assert set_props == props
     end
+
+    test "get single existing property", context do
+      set_props =
+        %{"tag" => "tag1", "description" => "file1 description"}
+
+      {:ok, node} =
+        Nodes.create_file(
+          context.repo1.id,
+          "/A/file1",
+          context.blob1.id,
+          properties: set_props
+        )
+
+      assert "tag1" == NodeProperties.get_property(node, "tag")
+      assert is_nil(NodeProperties.get_property(node, "tag2"))
+    end
+
+    test "add new property", context do
+      set_props =
+        %{"tag" => "tag1", "description" => "file1 description"}
+
+      {:ok, node} =
+        Nodes.create_file(
+          context.repo1.id,
+          "/A/file1",
+          context.blob1.id,
+          properties: set_props
+        )
+
+      NodeProperties.put_property(node, "created_on", "2025-01-01")
+
+      assert "tag1" == NodeProperties.get_property(node, "tag")
+      assert "2025-01-01" == NodeProperties.get_property(node, "created_on")
+    end
+
+    test "change existing property", context do
+      set_props =
+        %{"tag" => "tag1", "description" => "file1 description"}
+
+      {:ok, node} =
+        Nodes.create_file(
+          context.repo1.id,
+          "/A/file1",
+          context.blob1.id,
+          properties: set_props
+        )
+
+      assert "tag1" == NodeProperties.get_property(node, "tag")
+      NodeProperties.put_property(node, "tag", "new tag")
+      assert "new tag" == NodeProperties.get_property(node, "tag")
+    end
+
+    test "delete property", context do
+      set_props =
+        %{"tag" => "tag1", "description" => "file1 description"}
+
+      {:ok, node} =
+        Nodes.create_file(
+          context.repo1.id,
+          "/A/file1",
+          context.blob1.id,
+          properties: set_props
+        )
+
+      NodeProperties.delete_property(node, "description")
+      assert is_nil(NodeProperties.get_property(node, "description"))
+    end
   end
 end

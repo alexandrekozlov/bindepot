@@ -156,14 +156,14 @@ defmodule Bindepot.Core.Nodes do
   #   { :error, error } on failure
   defp insert_or_update_node(node_attributes, opts) do
     props = Keyword.get(opts, :properties) || %{}
-    node = get_existing_node(node_attributes, opts) || %Node{}
+    node = get_existing_node(node_attributes, opts) |> Repo.preload([:node_properties]) || %Node{}
 
-    changeset = Node.changeset(node, node_attributes)
+    np = NodeProperties.build_properties(props)
 
-    with {:ok, updated_node} <- Repo.insert_or_update(changeset),
-         :ok <- NodeProperties.add_properties(updated_node, props) do
-      {:ok, updated_node}
-    end
+    node
+    |> Node.changeset(node_attributes)
+    |> Ecto.Changeset.put_assoc(:node_properties, np)
+    |> Repo.insert_or_update()
   end
 
   # opts:
