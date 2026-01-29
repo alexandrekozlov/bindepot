@@ -31,7 +31,7 @@ defmodule Bindepot.Core.Nodes do
   end
 
   @doc """
-    Gets all files recursively.
+  Gets all files recursively.
   """
   def get_files(repository_id) do
     Repo.all_by(Node, repository_id: repository_id, type: :file)
@@ -48,46 +48,54 @@ defmodule Bindepot.Core.Nodes do
   end
 
   @doc ~S"""
-    Creates a directory.
+  Creates a directory.
 
-    Returns the last directory node. On error returns reason and all nodes as
-    a third tuple element.
+  Returns the last directory node.
 
+  If directory already exists, then the function fails.
+
+  Options:
+    * `:properties` - map of name/values to attach
+    * `:replace` - replaces existing directory.
   """
-  @spec create_directory(any(), String.t(), properties: map()) ::
-          {:ok, Node.t()} | {:error, String.t(), any()}
+  @spec create_directory(any(), String.t(), properties: map(), replace: boolean()) ::
+          {:ok, Node.t()} | {:error, String.t()}
   def create_directory(repository_id, path, opts \\ []) do
     case create_node_params(path, repository_id) do
       [] ->
-        {:error, "effective path is empty", nil}
+        {:error, "effective path is empty"}
 
       [last_node | dir_nodes] ->
-        apply_node_params(dir_nodes)
-        create_or_replace_node(last_node, opts)
+        create_intermediate_nodes(dir_nodes)
+        props = Keyword.get(opts, :properties, %{})
+        replace = Keyword.get(opts, :replace, false)
+        create_terminal_node(last_node, replace, props)
     end
   end
 
   @doc ~S"""
-    Creates a file.
+  Creates a file.
 
-    Returns a file node.
+  Returns a file node.
 
-    If file already exists, then the function fails.
+  If file already exists, then the function fails.
 
-    Options:
-      `:properties` - map of name/values to attac
-      `:replace` - replaces existing file node.
+  Options:
+    * `:properties` - map of name/values to attach
+    * `:replace` - replaces existing file.
   """
-  @spec create_file(any(), String.t(), any(), replace: boolean()) ::
-          {:ok, Node.t()} | {:error, String.t(), any()}
+  @spec create_file(any(), String.t(), any(), properties: map(), replace: boolean()) ::
+          {:ok, Node.t()} | {:error, String.t()}
   def create_file(repository_id, path, blob_id, opts \\ []) do
     case create_node_params(path, repository_id) do
       [] ->
-        {:error, "effective path is empty", nil}
+        {:error, "effective path is empty"}
 
-      [file_node | dir_nodes] ->
-        apply_node_params(dir_nodes)
-        create_or_replace_node(to_file_node(file_node, blob_id), opts)
+      [last_node | dir_nodes] ->
+        create_intermediate_nodes(dir_nodes)
+        props = Keyword.get(opts, :properties, %{})
+        replace = Keyword.get(opts, :replace, false)
+        create_terminal_node(to_file_node(last_node, blob_id), replace, props)
     end
   end
 
@@ -113,11 +121,11 @@ defmodule Bindepot.Core.Nodes do
   end
 
   @doc """
-    Create items from path.
+  Creates items from path.
 
-    Returns list of tuples `{ parent_path, child }`. The tuples arranged from
-    child to parent, which makes it convenient to modify the last path element
-    depending on whether it is a file or a directory.
+  Returns list of tuples `{ parent_path, child }`. The tuples arranged from
+  child to parent, which makes it convenient to modify the last path element
+  depending on whether it is a file or a directory.
   """
   def items_from_path(path) do
     path |> String.split("/", trim: true) |> do_items_from_path()
@@ -137,18 +145,19 @@ defmodule Bindepot.Core.Nodes do
     end)
   end
 
-  defp apply_node_params(_node_params, _opts \\ [])
-
-  defp apply_node_params([] = node_params, _opts) when length(node_params) == 0 do
-    {:error, "effective path is epmty", nil}
+  defp get_existing_node(node_attr) do
+    Repo.get_by(Node,
+      path: node_attr.path,
+      name: node_attr.name,
+      repository_id: node_attr.repository_id
+    )
   end
 
-  @spec apply_node_params([map()], keyword()) :: {:ok, Node.t()} | {:error, String.t()}
-  defp apply_node_params(node_entries, opts) do
+  defp create_intermediate_nodes(node_entries) do
     results =
       node_entries
       |> Enum.reverse()
-      |> Enum.reduce([], &[insert_or_update_node(&1, opts) | &2])
+      |> Enum.reduce([], &[create_intermediate_node(&1) | &2])
 
     case Enum.find(results, fn
            :ok -> false
@@ -159,107 +168,62 @@ defmodule Bindepot.Core.Nodes do
     end
   end
 
-  # opts:
-  #   replace: true | false - when true allows node replacement.
-  #           this applies only for file nodes and ignored for directories.
-  # returns:
-  #   { :ok, node } on success
-  #   { :error, error } on failure
-  defp insert_or_update_node(node_attributes, opts) do
-    props = Keyword.get(opts, :properties) || %{}
+  defp create_intermediate_node(%{type: :directory} = node_attr) do
+    case get_existing_node(node_attr) do
+      %{type: :directory} = node ->
+        {:ok, node}
 
-    node =
-      get_existing_node(node_attributes, opts)
-      |> Repo.preload([:node_properties]) || %Node{}
+      %{type: :file} ->
+        {:error, "cannot create directory node. file node already exist"}
 
-    np = NodeProperties.build_properties(props)
-
-    node
-    |> Node.changeset(node_attributes)
-    |> Ecto.Changeset.put_assoc(:node_properties, np)
-    |> Repo.insert_or_update()
-  end
-
-  # opts:
-  #   properties: map of properties to associate with the node
-  #   replace: true | false - when true allows node replacement.
-  #
-  # returns:
-  #   { :ok, node } on success
-  #   { :error, error } on failure
-  defp create_or_replace_node(node_attributes, opts) do
-    props = Keyword.get(opts, :properties, %{})
-    replace = Keyword.get(opts, :replace, false)
-
-    existing_node =
-      Repo.get_by(Node,
-        path: node_attributes.path,
-        name: node_attributes.name,
-        repository_id: node_attributes.repository_id
-      )
-
-    create_file_node(node_attributes, existing_node, replace, props)
-  end
-
-  defp create_file_node(node_attr, existing_node, replace, props)
-
-  # new node
-  defp create_file_node(node_attributes, nil, _replace, props) do
-    np = NodeProperties.build_properties(props)
-
-    %Node{}
-    |> Node.changeset(node_attributes)
-    |> Ecto.Changeset.put_assoc(:node_properties, np)
-    |> Repo.insert()
-  end
-
-  # replace existing directory node
-  defp create_file_node(node_attributes, %{type: :directory} = node, true, props) do
-    case empty?(node.repository_id, node.path) do
-      true ->
-        Repo.delete(node)
-        np = NodeProperties.build_properties(props)
-
-        %Node{}
-        |> Node.changeset(node_attributes)
-        |> Ecto.Changeset.put_assoc(:node_properties, np)
-        |> Repo.insert()
-
-      false ->
-        {:error, "directory is not empty", node}
+      nil ->
+        create_node(node_attr)
     end
   end
 
-  defp create_file_node(node_attributes, %{type: :file} = node, true, props) do
-    Repo.delete(node)
+  defp create_terminal_node(node_attr, replace, props) do
+    existing_node = get_existing_node(node_attr)
 
-    np = NodeProperties.build_properties(props)
+    case {existing_node, node_attr.type, replace} do
+      {%{}, _, false} ->
+        {:error, "node already exists"}
+
+      {%{type: :directory}, :directory, true} ->
+        if empty?(existing_node.repository_id, existing_node.path) do
+          Repo.delete(existing_node)
+          create_node(node_attr, props)
+        else
+          {:error, "cannot replace non-empty directory"}
+        end
+
+      {%{type: :file}, :file, true} ->
+        Repo.delete(existing_node)
+        create_node(node_attr, props)
+
+      {%{type: :file}, :directory, true} ->
+        {:error, "cannot create directory node in place of file node"}
+
+      {%{type: :directory}, :file, true} ->
+        {:error, "cannot create file node in place of directory node"}
+
+      {nil, _, _} ->
+        create_node(node_attr, props)
+    end
+  end
+
+  defp create_node(node_attr, props \\ nil) do
+    with_props = fn n ->
+      if is_nil(props) do
+        n
+      else
+        Ecto.Changeset.put_assoc(n, :node_properties, NodeProperties.build_properties(props))
+      end
+    end
 
     %Node{}
-    |> Node.changeset(node_attributes)
-    |> Ecto.Changeset.put_assoc(:node_properties, np)
+    |> Node.changeset(node_attr)
+    |> with_props.()
     |> Repo.insert()
-  end
-
-  # node exists and cannot be replaced
-  defp create_file_node(_, %{type: :file} = node, false, _) do
-    {:error, "node already exists", node}
-  end
-
-  # a directory node cannot be replaced with a file node
-  defp create_file_node(_, %{type: :directory} = node, _, _) do
-    {:error, "cannot replace with a different node type", node}
-  end
-
-  # opts:
-  #   replace: true | false - when true allows node replacement.
-  #           this applies only for file nodes and ignored for directories.
-  defp get_existing_node(node_attributes, opts) do
-    if Keyword.get(opts, :replace, false) and node_attributes.type == :file do
-      Repo.get_by(Node, Map.drop(node_attributes, [:blob_id]))
-    else
-      Repo.get_by(Node, node_attributes)
-    end
   end
 
   defp do_items_from_path(path, parent \\ nil, nodes \\ []) do

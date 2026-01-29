@@ -203,7 +203,7 @@ defmodule Bindepot.Core.NodesTest do
           "/"
         )
 
-      assert {:error, _reason, _node} = result
+      assert {:error, _reason} = result
     end
 
     test "creating subdirectories one by one should succeed in all cases", ctx do
@@ -232,7 +232,6 @@ defmodule Bindepot.Core.NodesTest do
                )
     end
 
-    @tag skip: "Currently it is insert or update operation for directories"
     test "replacing an existing directory should fail", ctx do
       assert {:ok, _} =
                Nodes.create_directory(
@@ -252,7 +251,7 @@ defmodule Bindepot.Core.NodesTest do
     setup [:create_repositories, :create_blobs]
 
     test "creating a file with an empty path should fail", ctx do
-      assert {:error, _reason, _} =
+      assert {:error, _reason} =
                Nodes.create_file(
                  ctx.repo1.id,
                  "/",
@@ -325,7 +324,7 @@ defmodule Bindepot.Core.NodesTest do
                  ctx.blob1.id
                )
 
-      assert {:error, _, _node} =
+      assert {:error, _} =
                Nodes.create_file(
                  ctx.repo1.id,
                  "/A/file1",
@@ -529,7 +528,6 @@ defmodule Bindepot.Core.NodesTest do
                |> NodeProperties.get_properties()
     end
 
-    @tag skip: "Still uses old code to create nodes"
     test "creating a directory with properties should not change parent directory properties",
          ctx do
       set_props = %{
