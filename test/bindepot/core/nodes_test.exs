@@ -197,11 +197,13 @@ defmodule Bindepot.Core.NodesTest do
     setup [:create_repositories]
 
     test "creating a non-directory should fail", ctx do
-      assert {:error, _reason, _node} =
-               Nodes.create_directory(
-                 ctx.repo1.id,
-                 "/"
-               )
+      result =
+        Nodes.create_directory(
+          ctx.repo1.id,
+          "/"
+        )
+
+      assert {:error, _reason, _node} = result
     end
 
     test "creating subdirectories one by one should succeed in all cases", ctx do
@@ -323,7 +325,7 @@ defmodule Bindepot.Core.NodesTest do
                  ctx.blob1.id
                )
 
-      assert {:error, _} =
+      assert {:error, _, _node} =
                Nodes.create_file(
                  ctx.repo1.id,
                  "/A/file1",

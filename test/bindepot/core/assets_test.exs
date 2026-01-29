@@ -83,7 +83,7 @@ defmodule Bindepot.Core.AssetsTest do
                  Path.expand(ctx.asset1)
                )
 
-      assert {:error, _node} =
+      assert {:error, _reason, _node} =
                Assets.put_file(
                  ctx.repository.id,
                  "/asset.bin",

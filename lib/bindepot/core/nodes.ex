@@ -57,9 +57,14 @@ defmodule Bindepot.Core.Nodes do
   @spec create_directory(any(), String.t(), properties: map()) ::
           {:ok, Node.t()} | {:error, String.t(), any()}
   def create_directory(repository_id, path, opts \\ []) do
-    path
-    |> create_node_params(repository_id)
-    |> apply_node_params(opts)
+    case create_node_params(path, repository_id) do
+      [] ->
+        {:error, "effective path is empty", nil}
+
+      [last_node | dir_nodes] ->
+        apply_node_params(dir_nodes)
+        create_or_replace_node(last_node, opts)
+    end
   end
 
   @doc ~S"""
@@ -82,7 +87,7 @@ defmodule Bindepot.Core.Nodes do
 
       [file_node | dir_nodes] ->
         apply_node_params(dir_nodes)
-        create_or_replace_file_node(to_file_node(file_node, blob_id), opts)
+        create_or_replace_node(to_file_node(file_node, blob_id), opts)
     end
   end
 
@@ -182,7 +187,7 @@ defmodule Bindepot.Core.Nodes do
   # returns:
   #   { :ok, node } on success
   #   { :error, error } on failure
-  defp create_or_replace_file_node(node_attributes, opts) do
+  defp create_or_replace_node(node_attributes, opts) do
     props = Keyword.get(opts, :properties, %{})
     replace = Keyword.get(opts, :replace, false)
 
@@ -208,7 +213,23 @@ defmodule Bindepot.Core.Nodes do
     |> Repo.insert()
   end
 
-  # replace existing node
+  # replace existing directory node
+  defp create_file_node(node_attributes, %{type: :directory} = node, true, props) do
+    case empty?(node.repository_id, node.path) do
+      true ->
+        Repo.delete(node)
+        np = NodeProperties.build_properties(props)
+
+        %Node{}
+        |> Node.changeset(node_attributes)
+        |> Ecto.Changeset.put_assoc(:node_properties, np)
+        |> Repo.insert()
+
+      false ->
+        {:error, "directory is not empty", node}
+    end
+  end
+
   defp create_file_node(node_attributes, %{type: :file} = node, true, props) do
     Repo.delete(node)
 
@@ -221,13 +242,13 @@ defmodule Bindepot.Core.Nodes do
   end
 
   # node exists and cannot be replaced
-  defp create_file_node(_, %{type: :file}, false, _) do
-    {:error, "node already exists"}
+  defp create_file_node(_, %{type: :file} = node, false, _) do
+    {:error, "node already exists", node}
   end
 
   # a directory node cannot be replaced with a file node
-  defp create_file_node(_, %{type: :directory}, _, _) do
-    {:error, "a directory cannot be replaced with a file"}
+  defp create_file_node(_, %{type: :directory} = node, _, _) do
+    {:error, "cannot replace with a different node type", node}
   end
 
   # opts:
