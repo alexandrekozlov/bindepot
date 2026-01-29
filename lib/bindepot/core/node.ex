@@ -65,6 +65,25 @@ defmodule Bindepot.Core.Node do
     where(query, [n], n.path == ^path)
   end
 
+  def all(repository_id, path, recursive \\ false) do
+    norm_path =
+      path
+      |> String.split("/", trim: true)
+      |> Enum.join("/")
+      |> then(&("/" <> &1))
+
+    base = from n in Bindepot.Core.Node, where: n.repository_id == ^repository_id
+
+    case recursive do
+      true ->
+        pattern = String.replace(norm_path, ~r/[\\%_]/, "\\\\&") <> "%"
+        from n in base, where: like(n.path, ^pattern)
+
+      false ->
+        from n in base, where: n.path == ^norm_path
+    end
+  end
+
   # Verifies that file node (type: 1), has `blob_id` value.
   defp validate_file_node(changeset) do
     type = fetch_field!(changeset, :type)
