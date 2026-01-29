@@ -76,10 +76,7 @@ defmodule Bindepot.Pypi.RepoIndex do
   end
 
   defp get_node_etag(node) when not is_nil(node) do
-    case Jason.decode(node.properties) do
-      {:ok, props} -> Map.get(props, "etag")
-      {:error, _} -> nil
-    end
+    Bindepot.Core.NodeProperties.get_property(node, "etag")
   end
 
   def get_local_repo_index(repository_id) do
