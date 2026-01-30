@@ -148,7 +148,7 @@ defmodule BindepotWeb.Api.PypiController do
     request = Finch.build(:get, upstream_url, headers, body)
     IO.inspect(request)
 
-    case Finch.request(request, MyApp.Finch) do
+    case Finch.request(request, Bindepot.Finch) do
       {:ok, %Finch.Response{} = resp} ->
         conn
         |> put_resp_headers(resp.headers)

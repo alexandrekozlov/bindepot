@@ -71,12 +71,14 @@ defmodule Bindepot.Pypi.RepoIndex do
     end
   end
 
-  defp get_node_etag(nil) do
-    nil
-  end
+  defp get_node_etag(node) do
+    case node do
+      nil ->
+        nil
 
-  defp get_node_etag(node) when not is_nil(node) do
-    Bindepot.Core.NodeProperties.get_property(node, "etag")
+      node ->
+        Bindepot.Core.NodeProperties.get_property(node, "etag")
+    end
   end
 
   def get_local_repo_index(repository_id) do
