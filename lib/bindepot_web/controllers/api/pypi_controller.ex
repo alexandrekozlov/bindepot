@@ -9,15 +9,19 @@ defmodule BindepotWeb.Api.PypiController do
 
   alias BindepotWeb.Api.Utils
 
-  # https://peps.python.org/pep-0425/
-  # https://peps.python.org/pep-0503/
-  # https://peps.python.org/pep-0691/
-  # https://peps.python.org/pep-0700/
-  # https://peps.python.org/pep-0721/
-  # https://packaging.python.org/en/latest/specifications/source-distribution-format/#sdist-archive-features
-  # https://packaging.python.org/en/latest/specifications/
-  # https://packaging.python.org/en/latest/specifications/section-package-indices/
-  # https://docs.pypi.org/api/index-api/
+  # https://peps.python.org/pep-0425/     PEP 425 – Compatibility Tags for Built Distributions
+  # https://peps.python.org/pep-0503/     PEP 503 – Simple Repository API
+  # https://peps.python.org/pep-0691/     PEP 691 – JSON-based Simple API for Python Package Indexes
+  # https://peps.python.org/pep-0700/     PEP 700 – Additional Fields for the Simple API for Package Indexes
+  # https://peps.python.org/pep-0721/     PEP 721 – Using tarfile.data_filter for source distribution extraction
+  # https://packaging.python.org/en/latest/specifications/source-distribution-format/#sdist-archive-features    Source distribution archive features
+  # https://packaging.python.org/en/latest/specifications/    PyPA specifications
+  # https://packaging.python.org/en/latest/specifications/section-package-indices/    Package Index Interfaces
+  # https://docs.pypi.org/api/index-api/  Index API
+  #
+  # Also relevant:
+  # https://peps.python.org/pep-0658/     PEP 658 – Serve Distribution Metadata in the Simple Repository API
+  # https://peps.python.org/pep-0714/     PEP 714 – Rename dist-info-metadata in the Simple API
   #
 
   @use_proxy false
@@ -51,6 +55,14 @@ defmodule BindepotWeb.Api.PypiController do
     Assets.put_file(id, "/.pypi/index.html", file, replace: true)
   end
 
+  # TODO: This is an oversimplification, as we need to parse the package metadata
+  # verify that it is a package and the metadata does not contradict naming etc
+  # and store that additional metadata in order to generate a proper index entry.
+  # Important points:
+  #    * Need to create a separate metadata entry as described in PEP658 and corrected in PEP714
+  #    * Need to serve additional attribute in anchor `data-requires-python`
+  #      derived from `Requires-Python` field of package metadata. As described in PEP503.
+  #
   def upload(conn, %{"path" => ["legacy"]} = params) do
     repo = conn.assigns.repository
 
@@ -95,7 +107,6 @@ defmodule BindepotWeb.Api.PypiController do
     cond do
       conn.assigns.repository.type == "remote" ->
         if @use_proxy do
-          IO.inspect(path)
           proxy(conn, path)
         else
           case path do
@@ -130,10 +141,9 @@ defmodule BindepotWeb.Api.PypiController do
   end
 
   defp handle_remote_package_index(conn, package, _params) do
-    IO.inspect(package)
     {:ok, index} = RepoIndex.get_remote_repo_index(conn.assigns.repository.id)
 
-    case Map.get(index, package, nil) |> IO.inspect() do
+    case Map.get(index, package, nil) do
       nil ->
         conn
         |> put_resp_content_type("text/plain")
@@ -142,7 +152,7 @@ defmodule BindepotWeb.Api.PypiController do
       %{"uri" => url} ->
         {:ok, index} = RepoIndex.get_remote_package_index(conn.assigns.repository.id, url)
 
-        body = index |> IO.inspect() |> HtmlIndex.to_html_repo_simple_index()
+        body = index |> HtmlIndex.to_html_repo_package_index()
 
         conn
         |> put_resp_content_type("text/html")
@@ -188,11 +198,9 @@ defmodule BindepotWeb.Api.PypiController do
       |> Enum.reject(fn {k, _} -> k in @excluded_headers end)
 
     request = Finch.build(:get, upstream_url, headers, body)
-    IO.inspect(request)
 
     case Finch.request(request, Bindepot.Finch) do
       {:ok, %Finch.Response{} = resp} ->
-        resp |>IO.inspect()
         conn
         |> put_resp_headers(resp.headers)
         |> send_resp(resp.status, resp.body)

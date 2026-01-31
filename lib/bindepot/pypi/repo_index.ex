@@ -57,7 +57,7 @@ defmodule Bindepot.Pypi.RepoIndex do
     url =
       repo.url
       |> URI.parse()
-      |> URI.append_path("/simple/") |> IO.inspect(label: "get_remote_repo_index: url")
+      |> URI.append_path("/simple/")
 
     case get_remote_index(url, etag) do
       {:ok, %{status: :new, etag: etag, items: items}} ->
@@ -96,7 +96,7 @@ defmodule Bindepot.Pypi.RepoIndex do
     url =
       repo.url
       |> URI.parse()
-      |> URI.merge(package_url) |> IO.inspect(label: "get_remote_package_index: url")
+      |> URI.merge(package_url)
 
     case get_remote_index(url) do
       {:ok, %{status: :new, etag: _etag, items: items}} ->
