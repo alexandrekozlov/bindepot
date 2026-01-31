@@ -39,7 +39,7 @@ defmodule Bindepot.Pypi.HtmlIndexParser do
         uri: "...",
         name: "...",
         metadata: %{...},
-        hash: %{algo: ..., digest: ...} | nil
+        hash: {algo, digest} | nil
       },
       ...
     ]

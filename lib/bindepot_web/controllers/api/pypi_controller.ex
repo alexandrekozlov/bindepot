@@ -149,7 +149,7 @@ defmodule BindepotWeb.Api.PypiController do
         |> put_resp_content_type("text/plain")
         |> send_resp(404, "not found")
 
-      %{"uri" => url} ->
+      %{uri: url} ->
         {:ok, index} = RepoIndex.get_remote_package_index(conn.assigns.repository.id, url)
 
         body = index |> HtmlIndex.to_html_repo_package_index()

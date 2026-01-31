@@ -75,7 +75,7 @@ defmodule Bindepot.Pypi.RepoIndex do
         items =
           Bindepot.Core.Assets.get_stream(repository_id, "/.pypi/index.json")
           |> Enum.into("")
-          |> Jason.decode!()
+          |> Jason.decode!(keys: &(key_decoder(&1)))
 
         {:ok, items}
 
@@ -147,5 +147,15 @@ defmodule Bindepot.Pypi.RepoIndex do
 
   defp get_etag(headers) do
     Enum.find_value(headers, nil, &if(elem(&1, 0) == @etag_header, do: elem(&1, 1)))
+  end
+
+  defp key_decoder(str) do
+    case str do
+      "uri" -> :uri
+      "name" -> :name
+      "metadata" -> :metadata
+      "hash" -> :hash
+      _ -> str
+    end
   end
 end
