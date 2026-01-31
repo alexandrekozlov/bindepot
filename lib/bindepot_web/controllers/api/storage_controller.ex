@@ -19,7 +19,6 @@ defmodule BindepotWeb.Api.StorageController do
           size: if(is_nil(asset.blob), do: -1, else: asset.blob.size)
         }
       end)
-      |> IO.inspect()
 
     conn
     |> put_resp_content_type("application/json")

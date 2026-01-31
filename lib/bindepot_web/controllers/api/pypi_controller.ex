@@ -20,6 +20,8 @@ defmodule BindepotWeb.Api.PypiController do
   # https://docs.pypi.org/api/index-api/
   #
 
+  @use_proxy false
+
   # Hop-by-hop headers that should NOT be forwarded
   @excluded_headers ~w(
       connection
@@ -77,7 +79,6 @@ defmodule BindepotWeb.Api.PypiController do
       )
 
     resp = BindepotWeb.Api.Utils.sanitize_schema(pkg)
-    IO.inspect(resp)
 
     conn
     |> put_resp_content_type("application/json")
@@ -93,7 +94,18 @@ defmodule BindepotWeb.Api.PypiController do
   def download(%{request_path: request_path} = conn, %{"path" => path} = params) do
     cond do
       conn.assigns.repository.type == "remote" ->
-        proxy(conn, path)
+        if @use_proxy do
+          IO.inspect(path)
+          proxy(conn, path)
+        else
+          case path do
+            ["simple"] ->
+              handle_remote_repo_index(conn, params)
+
+            ["simple", package] ->
+              handle_remote_package_index(conn, package, params)
+          end
+        end
 
       String.last(request_path) != "/" ->
         redirect(conn, to: "#{request_path}/")
@@ -105,6 +117,36 @@ defmodule BindepotWeb.Api.PypiController do
         conn
         |> put_resp_content_type("text/plain")
         |> send_resp(400, "'#{request_path}' cannot be used for upload. Use '/simple/'.")
+    end
+  end
+
+  defp handle_remote_repo_index(conn, _params) do
+    {:ok, index} = RepoIndex.get_remote_repo_index(conn.assigns.repository.id)
+    body = index |> HtmlIndex.to_html_repo_simple_index()
+
+    conn
+    |> put_resp_content_type("text/html")
+    |> send_resp(200, body)
+  end
+
+  defp handle_remote_package_index(conn, package, _params) do
+    IO.inspect(package)
+    {:ok, index} = RepoIndex.get_remote_repo_index(conn.assigns.repository.id)
+
+    case Map.get(index, package, nil) |> IO.inspect() do
+      nil ->
+        conn
+        |> put_resp_content_type("text/plain")
+        |> send_resp(404, "not found")
+
+      %{"uri" => url} ->
+        {:ok, index} = RepoIndex.get_remote_package_index(conn.assigns.repository.id, url)
+
+        body = index |> IO.inspect() |> HtmlIndex.to_html_repo_simple_index()
+
+        conn
+        |> put_resp_content_type("text/html")
+        |> send_resp(200, body)
     end
   end
 
@@ -150,6 +192,7 @@ defmodule BindepotWeb.Api.PypiController do
 
     case Finch.request(request, Bindepot.Finch) do
       {:ok, %Finch.Response{} = resp} ->
+        resp |>IO.inspect()
         conn
         |> put_resp_headers(resp.headers)
         |> send_resp(resp.status, resp.body)
@@ -161,7 +204,7 @@ defmodule BindepotWeb.Api.PypiController do
 
   defp build_upstream_url(url, path_segments, query_string) do
     path = Enum.join(path_segments, "/")
-    base = "#{String.trim_trailing(url, "/")}/#{path}"
+    base = "#{String.trim_trailing(url, "/")}/#{path}/"
 
     if query_string == "" do
       base

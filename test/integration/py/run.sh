@@ -6,7 +6,7 @@ fi
 
 basedir=$(dirname $(realpath $0))
 
-. $basedir/00-setup-test.sh
+. $basedir/00-setup-run.sh
 
 . $basedir/$1-*.sh
 

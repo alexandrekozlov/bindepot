@@ -10,7 +10,6 @@ defmodule BindepotWeb.Api.RepositoryIoController do
   alias BindepotWeb.Api.PypiController
 
   def handle_request(%{method: method} = conn, params) do
-    IO.inspect(params)
 
     repo = conn.assigns.repository
 

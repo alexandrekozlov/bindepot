@@ -32,7 +32,6 @@ defmodule BindepotWeb.Api.RepositoryController do
       |> Map.put("name", name)
       |> Map.put_new("type", "local")
       |> Map.put_new("package_type", "generic")
-      |> IO.inspect()
       |> Repositories.create()
 
     resp =

@@ -99,8 +99,6 @@ defmodule BindepotWeb.RepositoryLive.Form do
   end
 
   defp save_repository(socket, :new, repository_params) do
-    IO.inspect(repository_params)
-
     case Repositories.create(repository_params) do
       {:ok, repository} ->
         {:noreply,

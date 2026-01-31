@@ -6,6 +6,19 @@ defmodule Bindepot.Pypi.RepoIndex do
   @etag_header "etag"
   @is_none_match_header "If-None-Match"
 
+  @doc ~S"""
+  Fetches and parses PyPI repository index from remote repository.
+
+  `etag` specifies HTTP ETag header value.
+
+  Returns
+    * `{:ok, %{status: :new, etag: etag, items: items}}` - index was retrieved and parsed
+    * `{:ok, status: :unchanged }` - index has not changed
+    * `{:ok, status: http_result }` - other than HTTP 200 or 304 result returned
+    * `{:error, reason }` - other, non-HTTP error occurred.
+
+
+  """
   def get_remote_index(url, etag \\ nil) do
     stream_handler = fn
       {:status, 200}, acc ->
@@ -41,12 +54,17 @@ defmodule Bindepot.Pypi.RepoIndex do
     node = Bindepot.Core.Nodes.get(repository_id, "/.pypi/index.json")
     etag = get_node_etag(node)
 
-    case get_remote_index(Path.join(repo.url, "simple") <> "/", etag) do
+    url =
+      repo.url
+      |> URI.parse()
+      |> URI.append_path("/simple/") |> IO.inspect(label: "get_remote_repo_index: url")
+
+    case get_remote_index(url, etag) do
       {:ok, %{status: :new, etag: etag, items: items}} ->
         Bindepot.Core.Assets.put_stream(
           repository_id,
           "/.pypi/index.json",
-          Jason.encode!(items),
+          [Jason.encode!(items)],
           replace: true,
           properties: %{"etag" => etag}
         )
@@ -56,8 +74,32 @@ defmodule Bindepot.Pypi.RepoIndex do
       {:ok, %{status: :unchanged}} ->
         items =
           Bindepot.Core.Assets.get_stream(repository_id, "/.pypi/index.json")
+          |> Enum.into("")
           |> Jason.decode!()
 
+        {:ok, items}
+
+      {:ok, %{status: result}} when is_integer(result) ->
+        {:error, "HTTP result: #{result}"}
+
+      {:error, reason} ->
+        {:error, reason}
+
+      _ ->
+        {:error, "unexpected error"}
+    end
+  end
+
+  def get_remote_package_index(repository_id, package_url) do
+    repo = Bindepot.Core.Repositories.get(repository_id)
+
+    url =
+      repo.url
+      |> URI.parse()
+      |> URI.merge(package_url) |> IO.inspect(label: "get_remote_package_index: url")
+
+    case get_remote_index(url) do
+      {:ok, %{status: :new, etag: _etag, items: items}} ->
         {:ok, items}
 
       {:ok, %{status: result}} when is_integer(result) ->
