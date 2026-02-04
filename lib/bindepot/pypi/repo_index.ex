@@ -7,9 +7,19 @@ defmodule Bindepot.Pypi.RepoIndex do
   @is_none_match_header "If-None-Match"
 
   @doc ~S"""
-  Fetches and parses PyPI repository index from remote repository.
+  Fetches and parses PyPI repository index from specified URL.
 
   `etag` specifies HTTP ETag header value.
+
+  The index items have the structure:
+  ```
+  %{ "paclage_name" => %{
+    uri: "uri",
+    name: "name",
+    metadata: %{ "key" => "value" },
+    hash: { "algo", "digest" }
+  } }
+  ```
 
   Returns
     * `{:ok, %{status: :new, etag: etag, items: items}}` - index was retrieved and parsed
@@ -49,6 +59,16 @@ defmodule Bindepot.Pypi.RepoIndex do
     |> then(&{elem(&1, 0), Map.delete(elem(&1, 1), :tail)})
   end
 
+  @doc ~S"""
+  Fetches remote repository index according to the remote repository settings.
+
+  The result is cached if possible.
+
+  Returns:
+    * `{:ok, items}` - index
+    * `{:error, reason}` - error
+
+  """
   def get_remote_repo_index(repository_id) do
     repo = Bindepot.Core.Repositories.get(repository_id)
     node = Bindepot.Core.Nodes.get(repository_id, "/.pypi/index.json")

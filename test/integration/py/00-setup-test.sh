@@ -2,7 +2,6 @@
 
 set -e -x
 
-
 export BINDEPOT_CACHE_DIR="$(mktemp -d -t bindepot_cache.XXXXXX)"
 export BINDEPOT_DATA_DIR="$(mktemp -d -t bindepot_data.XXXXXX)"
 projdir="$(mktemp -d -t pyproj_.XXXXXX)"
@@ -29,7 +28,4 @@ if [[ "${DEBUG}" == "" ]]; then
     trap cleanup EXIT
 fi
 
-cp -R proj/* $projdir
-
-pushd `pwd`
-cd $projdir
+. $(dirname $(realpath $0))/00-setup-common.sh

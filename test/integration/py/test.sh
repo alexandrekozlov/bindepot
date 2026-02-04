@@ -6,8 +6,7 @@ fi
 
 basedir=$(dirname $(realpath $0))
 
+pushd $(pwd)
 . $basedir/00-setup-test.sh
-
 . $basedir/$1-*.sh
-
 popd

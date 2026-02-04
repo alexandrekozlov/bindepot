@@ -16,7 +16,4 @@ if [[ "${DEBUG}" == "" ]]; then
     trap cleanup EXIT
 fi
 
-cp -R proj/* $projdir
-
-pushd `pwd`
-cd $projdir
+. $(dirname $(realpath $0))/00-setup-common.sh
