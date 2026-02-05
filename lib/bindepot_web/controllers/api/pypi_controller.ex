@@ -2,12 +2,9 @@ defmodule BindepotWeb.Api.PypiController do
   use BindepotWeb, :controller
 
   alias Bindepot.Pypi.HtmlIndex
-  alias Bindepot.Core.Repository
   alias Bindepot.Core.Assets
   alias Bindepot.Core.DistFiles
   alias Bindepot.Pypi.RepoIndex
-
-  alias BindepotWeb.Api.Utils
 
   # https://peps.python.org/pep-0425/     PEP 425 – Compatibility Tags for Built Distributions
   # https://peps.python.org/pep-0503/     PEP 503 – Simple Repository API
@@ -38,22 +35,6 @@ defmodule BindepotWeb.Api.PypiController do
       upgrade
       host
     )
-
-  def local_repo_index(conn, _params) do
-    body =
-      RepoIndex.get_local_repo_index(conn.assigns.repository.id)
-      |> HtmlIndex.to_html_repo_simple_index()
-
-    conn
-    |> put_resp_content_type("text/html")
-    |> send_resp(200, body)
-  end
-
-  def fetch_remote_repo_index(%Repository{id: id, url: url} = _repo) do
-    repo_index_url = "#{String.trim_trailing(url, "/")}/simple/"
-    file = Utils.download(repo_index_url)
-    Assets.put_file(id, "/.pypi/index.html", file, replace: true)
-  end
 
   # TODO: This is an oversimplification, as we need to parse the package metadata
   # verify that it is a package and the metadata does not contradict naming etc
@@ -105,24 +86,17 @@ defmodule BindepotWeb.Api.PypiController do
 
   def download(%{request_path: request_path} = conn, %{"path" => path} = params) do
     cond do
-      conn.assigns.repository.type == "remote" ->
-        if @use_proxy do
-          proxy(conn, path)
-        else
-          case path do
-            ["simple"] ->
-              handle_remote_repo_index(conn, params)
+      conn.assigns.repository.type in ["local", "remote", "virtual"] ->
+        case path do
+          ["simple"] ->
+            handle_repo_index(conn, params)
 
-            ["simple", package] ->
-              handle_remote_package_index(conn, package, params)
-          end
+          ["simple", package] ->
+            handle_project_index(conn, package, params)
         end
 
       String.last(request_path) != "/" ->
         redirect(conn, to: "#{request_path}/")
-
-      path == ["simple"] ->
-        list_packages(conn, params)
 
       true ->
         conn
@@ -131,55 +105,33 @@ defmodule BindepotWeb.Api.PypiController do
     end
   end
 
-  defp handle_remote_repo_index(conn, _params) do
-    {:ok, index} = RepoIndex.get_remote_repo_index(conn.assigns.repository.id)
-    body = index |> HtmlIndex.to_html_repo_simple_index()
+  defp handle_repo_index(conn, _params) do
+    body =
+      conn.assigns.repository
+      |> RepoIndex.get_repo_index()
+      |> HtmlIndex.to_html_repo_simple_index()
 
     conn
     |> put_resp_content_type("text/html")
     |> send_resp(200, body)
   end
 
-  defp handle_remote_package_index(conn, package, _params) do
-    {:ok, index} = RepoIndex.get_remote_repo_index(conn.assigns.repository.id)
+  defp handle_project_index(conn, package, _params) do
+    index = RepoIndex.get_project_index(conn.assigns.repository, package)
 
-    case Map.get(index, package, nil) do
+    case index do
       nil ->
         conn
         |> put_resp_content_type("text/plain")
         |> send_resp(404, "not found")
 
-      %{uri: url} ->
-        {:ok, index} = RepoIndex.get_remote_package_index(conn.assigns.repository.id, url)
-
+      _ ->
         body = index |> HtmlIndex.to_html_repo_package_index()
 
         conn
         |> put_resp_content_type("text/html")
         |> send_resp(200, body)
     end
-  end
-
-  defp list_packages(conn, _params) do
-    repo = conn.assigns.repository
-
-    assets = Assets.all(repo)
-
-    body =
-      "<!DOCTYPE html>\n<html>\n<body>" <>
-        (assets
-         |> Enum.reduce([], fn asset, b ->
-           a =
-             "<a href=\"#{asset.path}/#{asset.name}#sha256=#{asset.sha256}\">#{asset.name}</a><br/>"
-
-           [a | b]
-         end)
-         |> Enum.reverse()
-         |> Enum.join("\n")) <> "</body></html>\n"
-
-    conn
-    |> put_resp_content_type("text/html")
-    |> send_resp(200, body)
   end
 
   def proxy(conn, path_segments) do

@@ -1,4 +1,5 @@
 defmodule Bindepot.Pypi.RepoIndex do
+  alias Bindepot.Core.Repositories
   alias Bindepot.Core.Packages
   alias Bindepot.Core.DistFiles
   alias Bindepot.Pypi.HtmlIndexParser
@@ -6,30 +7,142 @@ defmodule Bindepot.Pypi.RepoIndex do
   @etag_header "etag"
   @is_none_match_header "If-None-Match"
 
+  def get_repo_index(%{type: "local", id: id} = _repository) do
+    {:ok,
+     id
+     |> Packages.all()
+     |> Enum.reduce(%{}, fn e, acc ->
+       Map.put(acc, e.name, %{name: e.name, uri: e.name <> "/"})
+     end)}
+  end
+
   @doc ~S"""
-  Fetches and parses PyPI repository index from specified URL.
+  Fetches remote repository index according to the remote repository settings.
 
-  `etag` specifies HTTP ETag header value.
+  The result is cached if possible.
 
-  The index items have the structure:
-  ```
-  %{ "paclage_name" => %{
-    uri: "uri",
-    name: "name",
-    metadata: %{ "key" => "value" },
-    hash: { "algo", "digest" }
-  } }
-  ```
-
-  Returns
-    * `{:ok, %{status: :new, etag: etag, items: items}}` - index was retrieved and parsed
-    * `{:ok, status: :unchanged }` - index has not changed
-    * `{:ok, status: http_result }` - other than HTTP 200 or 304 result returned
-    * `{:error, reason }` - other, non-HTTP error occurred.
-
+  Returns:
+    * `{:ok, items}` - index
+    * `{:error, reason}` - error
 
   """
-  def get_remote_index(url, etag \\ nil) do
+  def get_repo_index(%{type: "remote", id: id} = repository) do
+    node = Bindepot.Core.Nodes.get(id, "/.pypi/index.json")
+    etag = get_node_etag(node)
+
+    url =
+      repository.url
+      |> URI.parse()
+      |> URI.append_path("/simple/")
+
+    case fetch_index(url, etag) do
+      {:ok, %{status: :new, etag: etag, items: items}} ->
+        Bindepot.Core.Assets.put_stream(
+          id,
+          "/.pypi/index.json",
+          [Jason.encode!(items)],
+          replace: true,
+          properties: %{"etag" => etag}
+        )
+
+        {:ok, items}
+
+      {:ok, %{status: :unchanged}} ->
+        items =
+          Bindepot.Core.Assets.get_stream(id, "/.pypi/index.json")
+          |> Enum.into("")
+          |> Jason.decode!(keys: &key_decoder(&1))
+
+        {:ok, items}
+
+      {:ok, %{status: result}} when is_integer(result) ->
+        {:error, "HTTP result: #{result}"}
+
+      {:error, reason} ->
+        {:error, reason}
+
+      _ ->
+        {:error, "unexpected error"}
+    end
+  end
+
+  def get_repo_index(%{type: "virtual", repositories: children} = _repository) do
+    children
+    |> Enum.reverse()
+    |> Enum.reduce(%{}, fn key, acc ->
+      key
+      |> Repositories.get_by_name()
+      |> get_repo_index()
+      |> then(fn {:ok, idx} -> idx end)
+      |> Enum.reduce(acc, fn {k, _} = t, a -> IO.inspect(t) ; Map.put(a, k, %{name: k, uri: k <> "/"}) end)
+    end)
+  end
+
+  def get_project_index(%{type: "local", id: id} = _repository, package_name) do
+    id
+    |> DistFiles.all(package_name)
+    |> Enum.map(&%{name: &1.name, uri: &1.name, hash: {"sha256", &1.blob.sha256}})
+    |> Enum.sort(&(&1.name >= &2.name))
+  end
+
+  @doc ~S"""
+    Gets remote project index.
+
+  """
+  def get_project_index(%{type: "remote"} = repository, package_name) do
+    {:ok, repo_index} = get_repo_index(repository)
+
+    case Map.get(repo_index, package_name) do
+      nil ->
+        nil
+
+      %{uri: url} ->
+        {:ok, package_index} = get_remote_project_index(repository, url)
+        package_index
+    end
+  end
+
+  defp get_remote_project_index(repository, package_url) do
+    url =
+      repository.url
+      |> URI.parse()
+      |> URI.merge(package_url)
+
+    case fetch_index(url) do
+      {:ok, %{status: :new, etag: _etag, items: projects}} ->
+        {:ok, projects}
+
+      {:ok, %{status: result}} when is_integer(result) ->
+        {:error, "HTTP result: #{result}"}
+
+      {:error, reason} ->
+        {:error, reason}
+
+      _ ->
+        {:error, "unexpected error"}
+    end
+  end
+
+  # Fetches and parses PyPI repository index from specified URL.
+  #
+  # `etag` specifies HTTP ETag header value.
+  #
+  # The index items have the structure:
+  # ```
+  # %{ "package_name" => %{
+  #   uri: "uri",
+  #   name: "name",
+  #   metadata: %{ "key" => "value" },
+  #   hash: { "algo", "digest" }
+  # } }
+  # ```
+  #
+  # Returns
+  #   * `{:ok, %{status: :new, etag: etag, items: items}}` - index was retrieved and parsed
+  #   * `{:ok, status: :unchanged }` - index has not changed
+  #   * `{:ok, status: http_result }` - other than HTTP 200 or 304 result returned
+  #   * `{:error, reason }` - other, non-HTTP error occurred.
+  defp fetch_index(url, etag \\ nil) do
     stream_handler = fn
       {:status, 200}, acc ->
         {:cont, Map.put(acc, :status, :new)}
@@ -59,80 +172,6 @@ defmodule Bindepot.Pypi.RepoIndex do
     |> then(&{elem(&1, 0), Map.delete(elem(&1, 1), :tail)})
   end
 
-  @doc ~S"""
-  Fetches remote repository index according to the remote repository settings.
-
-  The result is cached if possible.
-
-  Returns:
-    * `{:ok, items}` - index
-    * `{:error, reason}` - error
-
-  """
-  def get_remote_repo_index(repository_id) do
-    repo = Bindepot.Core.Repositories.get(repository_id)
-    node = Bindepot.Core.Nodes.get(repository_id, "/.pypi/index.json")
-    etag = get_node_etag(node)
-
-    url =
-      repo.url
-      |> URI.parse()
-      |> URI.append_path("/simple/")
-
-    case get_remote_index(url, etag) do
-      {:ok, %{status: :new, etag: etag, items: items}} ->
-        Bindepot.Core.Assets.put_stream(
-          repository_id,
-          "/.pypi/index.json",
-          [Jason.encode!(items)],
-          replace: true,
-          properties: %{"etag" => etag}
-        )
-
-        {:ok, items}
-
-      {:ok, %{status: :unchanged}} ->
-        items =
-          Bindepot.Core.Assets.get_stream(repository_id, "/.pypi/index.json")
-          |> Enum.into("")
-          |> Jason.decode!(keys: &(key_decoder(&1)))
-
-        {:ok, items}
-
-      {:ok, %{status: result}} when is_integer(result) ->
-        {:error, "HTTP result: #{result}"}
-
-      {:error, reason} ->
-        {:error, reason}
-
-      _ ->
-        {:error, "unexpected error"}
-    end
-  end
-
-  def get_remote_package_index(repository_id, package_url) do
-    repo = Bindepot.Core.Repositories.get(repository_id)
-
-    url =
-      repo.url
-      |> URI.parse()
-      |> URI.merge(package_url)
-
-    case get_remote_index(url) do
-      {:ok, %{status: :new, etag: _etag, items: items}} ->
-        {:ok, items}
-
-      {:ok, %{status: result}} when is_integer(result) ->
-        {:error, "HTTP result: #{result}"}
-
-      {:error, reason} ->
-        {:error, reason}
-
-      _ ->
-        {:error, "unexpected error"}
-    end
-  end
-
   defp get_node_etag(node) do
     case node do
       nil ->
@@ -143,21 +182,7 @@ defmodule Bindepot.Pypi.RepoIndex do
     end
   end
 
-  def get_local_repo_index(repository_id) do
-    repository_id
-    |> Packages.all()
-    |> Enum.map(&%{name: &1.name, uri: &1.name <> "/"})
-    |> Enum.sort(&(&1.name >= &2.name))
-  end
-
-  def get_local_package_index(repository_id, package_name) do
-    repository_id
-    |> DistFiles.all(package_name)
-    |> Enum.map(&%{name: &1.name, uri: &1.name, hash: {"sha256", &1.blob.sha256}})
-    |> Enum.sort(&(&1.name >= &2.name))
-  end
-
-  def extract_repo_index(stream) do
+  def repo_index_from_html(stream) do
     stream
     |> HtmlIndexParser.parse()
     |> Enum.reduce([], fn element, acc ->
@@ -169,6 +194,8 @@ defmodule Bindepot.Pypi.RepoIndex do
     Enum.find_value(headers, nil, &if(elem(&1, 0) == @etag_header, do: elem(&1, 1)))
   end
 
+  # This decoder is used by JSON decoder and ensures only known keys are decoded
+  # as atoms, while others as strings.
   defp key_decoder(str) do
     case str do
       "uri" -> :uri
@@ -177,5 +204,16 @@ defmodule Bindepot.Pypi.RepoIndex do
       "hash" -> :hash
       _ -> str
     end
+  end
+
+  def measure(function) do
+    r = function
+    |> :timer.tc
+    r
+    |> elem(0)
+    |> Kernel./(1_000_000)
+    |> then(&(IO.puts("#{&1}")))
+
+    elem(r,1)
   end
 end
