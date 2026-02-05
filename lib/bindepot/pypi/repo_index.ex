@@ -112,8 +112,16 @@ defmodule Bindepot.Pypi.RepoIndex do
     end
   end
 
-  def get_project_index(%{type: "virtual"} = repository, package_name) do
-    {:error, "not implemented"}
+  def get_project_index(%{type: "virtual", repositories: children}, package_name) do
+    children
+    |> Enum.flat_map(fn key ->
+      key
+      |> Repositories.get_by_name()
+      |> get_project_index(package_name)
+      |> Enum.map(fn %{name: n} -> {n, %{name: n, uri: n <> "/"}} end)
+    end)
+    |> Map.new()
+    |> Map.values()
   end
 
   defp get_remote_project_index(repository, package_url) do
