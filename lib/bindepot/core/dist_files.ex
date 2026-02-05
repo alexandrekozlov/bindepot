@@ -1,5 +1,6 @@
 defmodule Bindepot.Core.DistFiles do
   import Ecto.Query, warn: false
+
   alias Bindepot.Repo
 
   alias Bindepot.Core.Package
@@ -10,15 +11,24 @@ defmodule Bindepot.Core.DistFiles do
   def all(repository_id, package_name) do
     q =
       from p in Package,
-        inner_join: v in Version,
-        on: p.id == v.package_id,
-        inner_join: f in DistFile,
-        on: v.id == f.version_id,
-        inner_join: n in Node,
-        on: f.node_id == n.id,
+        inner_join: v in assoc(p, :versions),
+        inner_join: f in assoc(v, :dist_files),
+        inner_join: n in assoc(f, :node),
+        inner_join: b in assoc(n, :blob),
         where: n.repository_id == ^repository_id and p.name == ^package_name,
-        select: n,
-        preload: [:blobs]
+        preload: [versions: {v, [dist_files: {f, [node: {n, blob: b}]}]}]
+
+    Repo.all(q)
+  end
+
+  def files(repository_id, package_name) do
+    q =
+      from n in Node,
+        join: f in assoc(n, :dist_file),
+        join: v in assoc(f, :version),
+        join: p in assoc(v, :package),
+        where: n.repository_id == ^repository_id and p.name == ^package_name,
+        preload: [:blob]
 
     Repo.all(q)
   end

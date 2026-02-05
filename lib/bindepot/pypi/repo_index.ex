@@ -1,4 +1,7 @@
 defmodule Bindepot.Pypi.RepoIndex do
+  require Logger
+  alias Logger
+
   alias Bindepot.Core.Repositories
   alias Bindepot.Core.Packages
   alias Bindepot.Core.DistFiles
@@ -36,6 +39,8 @@ defmodule Bindepot.Pypi.RepoIndex do
   end
 
   def get_repo_index(%{type: "remote", id: id} = repository) do
+    Logger.debug("get_repo_index (remote)")
+
     node = Bindepot.Core.Nodes.get(id, "/.pypi/index.json")
     etag = get_node_etag(node)
 
@@ -43,6 +48,8 @@ defmodule Bindepot.Pypi.RepoIndex do
       repository.url
       |> URI.parse()
       |> URI.append_path("/simple/")
+
+    Logger.debug("fetching remote repo index from #{url}")
 
     case fetch_index(url, etag) do
       {:ok, %{status: :new, etag: etag, items: items}} ->
@@ -62,6 +69,7 @@ defmodule Bindepot.Pypi.RepoIndex do
           |> Enum.into("")
           |> Jason.decode!(keys: &key_decoder(&1))
 
+        Logger.debug("Finished decoding cached index")
         {:ok, items}
 
       {:ok, %{status: result}} when is_integer(result) ->
@@ -88,47 +96,48 @@ defmodule Bindepot.Pypi.RepoIndex do
     |> Map.values()
   end
 
-  def get_project_index(%{type: "local", id: id} = _repository, package_name) do
+  def get_project_index(%{type: "local", id: id} = _repository, project_name) do
     id
-    |> DistFiles.all(package_name)
-    |> Enum.map(&%{name: &1.name, uri: &1.name, hash: {"sha256", &1.blob.sha256}})
-    |> Enum.sort(&(&1.name >= &2.name))
+    |> DistFiles.files(project_name)
+    |> Enum.map(&%{name: &1.name, uri: &1.name, hash: {"sha256", &1.blob.sha256}, metadata: %{}})
   end
 
   @doc ~S"""
     Gets remote project index.
 
   """
-  def get_project_index(%{type: "remote"} = repository, package_name) do
+  def get_project_index(%{type: "remote"} = repository, project_name) do
     {:ok, repo_index} = get_repo_index(repository)
 
-    case Enum.find(repo_index, nil, fn x -> x.name == package_name end) do
+    case Enum.find(repo_index, nil, fn x -> x.name == project_name end) do
       nil ->
-        nil
+        []
 
       %{uri: url} ->
-        {:ok, package_index} = get_remote_project_index(repository, url)
-        package_index
+        {:ok, projects} = get_remote_project_index(repository, url)
+        projects
     end
   end
 
-  def get_project_index(%{type: "virtual", repositories: children}, package_name) do
+  def get_project_index(%{type: "virtual", repositories: children}, project_name) do
     children
     |> Enum.flat_map(fn key ->
       key
       |> Repositories.get_by_name()
-      |> get_project_index(package_name)
-      |> Enum.map(fn %{name: n} -> {n, %{name: n, uri: n <> "/"}} end)
+      |> get_project_index(project_name)
+      |> Enum.map(fn %{name: n} = proj ->
+        {n, %{name: n, uri: proj.uri, hash: proj.hash, metadata: proj.metadata}}
+      end)
     end)
     |> Map.new()
     |> Map.values()
   end
 
-  defp get_remote_project_index(repository, package_url) do
+  defp get_remote_project_index(repository, project_url) do
     url =
       repository.url
       |> URI.parse()
-      |> URI.merge(package_url)
+      |> URI.merge(project_url)
 
     case fetch_index(url) do
       {:ok, %{status: :new, etag: _etag, items: projects}} ->
