@@ -33,7 +33,9 @@ defmodule Bindepot.Pypi.HtmlIndexParser do
 
   @doc """
   Stream-safe extraction of anchor tags.
-  Returns:
+
+
+  Returns items in reverse order as:
     [
       %{
         uri: "...",
@@ -46,7 +48,7 @@ defmodule Bindepot.Pypi.HtmlIndexParser do
   """
   def parse(stream) do
     stream
-    |> Enum.reduce({%{}, ""}, fn chunk, {acc, buffer} ->
+    |> Enum.reduce({[], ""}, fn chunk, {acc, buffer} ->
       buffer = buffer <> chunk
       parse_buffer(buffer, acc)
     end)
@@ -65,7 +67,7 @@ defmodule Bindepot.Pypi.HtmlIndexParser do
       [] ->
         # Keep only the sliding tail of the buffer
         tail = sliding_tail(buffer)
-        {%{}, tail}
+        {[], tail}
 
       [_ | _] ->
         {acc, rest, _noff} =
@@ -84,7 +86,7 @@ defmodule Bindepot.Pypi.HtmlIndexParser do
             case entry do
               %{uri: nil} -> {acc, rest, new_offset}
               %{name: ""} -> {acc, rest, new_offset}
-              _ -> {Map.put(acc, entry.name, entry), rest, new_offset}
+              _ -> {[entry | acc], rest, new_offset}
             end
           end)
 

@@ -4,7 +4,7 @@ defmodule Bindepot.Pypi.HtmlIndex do
     [~s"\t</body>\n</html>\n"]
     |> then(
       &[
-        Map.values(repo_index)
+        repo_index
         |> Enum.sort(fn a, b -> a.name < b.name end)
         |> Enum.map(fn e -> to_html_repo_index_entry(e) <> "<br>\n" end)
         | &1
@@ -17,7 +17,7 @@ defmodule Bindepot.Pypi.HtmlIndex do
     [~s"\t</body>\n</html>\n"]
     |> then(
       &[
-        Map.values(package_index)
+        package_index
         |> Enum.sort(fn a, b -> a.name < b.name end)
         |> Enum.map(fn e -> to_html_package_index_entry(e) <> "<br>\n" end)
         | &1

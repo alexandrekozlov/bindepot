@@ -7,25 +7,34 @@ defmodule Bindepot.Pypi.RepoIndex do
   @etag_header "etag"
   @is_none_match_header "If-None-Match"
 
-  def get_repo_index(%{type: "local", id: id} = _repository) do
-    {:ok,
-     id
-     |> Packages.all()
-     |> Enum.reduce(%{}, fn e, acc ->
-       Map.put(acc, e.name, %{name: e.name, uri: e.name <> "/"})
-     end)}
-  end
-
   @doc ~S"""
-  Fetches remote repository index according to the remote repository settings.
+  Fetches repository index according to the repository settings.
 
-  The result is cached if possible.
+  The result is not sorted.
+
+  For remote repositories the result is cached if possible.
 
   Returns:
     * `{:ok, items}` - index
     * `{:error, reason}` - error
 
+  where `items` are in the following format:
+
+  ```
+  [
+    %{ name: project_name, uri: project_uri },
+    ...
+  ]
+  ```
+
   """
+  def get_repo_index(%{type: "local", id: id} = _repository) do
+    {:ok,
+     id
+     |> Packages.all()
+     |> Enum.map(fn e -> %{name: e.name, uri: e.name <> "/"} end)}
+  end
+
   def get_repo_index(%{type: "remote", id: id} = repository) do
     node = Bindepot.Core.Nodes.get(id, "/.pypi/index.json")
     etag = get_node_etag(node)
@@ -40,7 +49,7 @@ defmodule Bindepot.Pypi.RepoIndex do
         Bindepot.Core.Assets.put_stream(
           id,
           "/.pypi/index.json",
-          [Jason.encode!(items)],
+          [Jason.encode_to_iodata!(items)],
           replace: true,
           properties: %{"etag" => etag}
         )
@@ -68,14 +77,15 @@ defmodule Bindepot.Pypi.RepoIndex do
 
   def get_repo_index(%{type: "virtual", repositories: children} = _repository) do
     children
-    |> Enum.reverse()
-    |> Enum.reduce(%{}, fn key, acc ->
+    |> Enum.flat_map(fn key ->
       key
       |> Repositories.get_by_name()
       |> get_repo_index()
       |> then(fn {:ok, idx} -> idx end)
-      |> Enum.reduce(acc, fn {k, _} = t, a -> IO.inspect(t) ; Map.put(a, k, %{name: k, uri: k <> "/"}) end)
+      |> Enum.map(fn %{name: n} -> {n, %{name: n, uri: n <> "/"}} end)
     end)
+    |> Map.new()
+    |> Map.values()
   end
 
   def get_project_index(%{type: "local", id: id} = _repository, package_name) do
@@ -92,7 +102,7 @@ defmodule Bindepot.Pypi.RepoIndex do
   def get_project_index(%{type: "remote"} = repository, package_name) do
     {:ok, repo_index} = get_repo_index(repository)
 
-    case Map.get(repo_index, package_name) do
+    case Enum.find(repo_index, nil, fn x -> x.name == package_name end) do
       nil ->
         nil
 
@@ -100,6 +110,10 @@ defmodule Bindepot.Pypi.RepoIndex do
         {:ok, package_index} = get_remote_project_index(repository, url)
         package_index
     end
+  end
+
+  def get_project_index(%{type: "virtual"} = repository, package_name) do
+    {:error, "not implemented"}
   end
 
   defp get_remote_project_index(repository, package_url) do
@@ -129,12 +143,12 @@ defmodule Bindepot.Pypi.RepoIndex do
   #
   # The index items have the structure:
   # ```
-  # %{ "package_name" => %{
+  # %{
   #   uri: "uri",
   #   name: "name",
   #   metadata: %{ "key" => "value" },
   #   hash: { "algo", "digest" }
-  # } }
+  # }
   # ```
   #
   # Returns
@@ -168,7 +182,7 @@ defmodule Bindepot.Pypi.RepoIndex do
     etag_header = if is_nil(etag), do: [], else: [{@is_none_match_header, etag}]
 
     Finch.build(:get, url, etag_header)
-    |> Finch.stream_while(Bindepot.Finch, %{items: %{}, tail: ""}, stream_handler)
+    |> Finch.stream_while(Bindepot.Finch, %{items: [], tail: ""}, stream_handler)
     |> then(&{elem(&1, 0), Map.delete(elem(&1, 1), :tail)})
   end
 
@@ -180,14 +194,6 @@ defmodule Bindepot.Pypi.RepoIndex do
       node ->
         Bindepot.Core.NodeProperties.get_property(node, "etag")
     end
-  end
-
-  def repo_index_from_html(stream) do
-    stream
-    |> HtmlIndexParser.parse()
-    |> Enum.reduce([], fn element, acc ->
-      [%{name: element.content, uri: element.href} | acc]
-    end)
   end
 
   defp get_etag(headers) do
@@ -207,13 +213,26 @@ defmodule Bindepot.Pypi.RepoIndex do
   end
 
   def measure(function) do
-    r = function
-    |> :timer.tc
+    r =
+      function
+      |> :timer.tc()
+
     r
     |> elem(0)
     |> Kernel./(1_000_000)
-    |> then(&(IO.puts("#{&1}")))
+    |> then(&IO.puts("#{&1}"))
 
-    elem(r,1)
+    elem(r, 1)
+  end
+
+  def measure_silent(function) do
+    r =
+      function
+      |> :timer.tc()
+
+    r
+    |> elem(0)
+    |> Kernel./(1_000_000)
+    |> then(&IO.puts("#{&1}"))
   end
 end

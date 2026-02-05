@@ -10,14 +10,15 @@ defmodule Bindepot.Pypi.PackageIndexParserTest do
       result =
         [html]
         |> HtmlIndexParser.parse()
+        |> Enum.reverse()
 
-      assert %{
-               "Package" => %{
+      assert [
+               %{
                  uri: "pkg.whl",
                  name: "Package",
                  hash: nil
                }
-             } = result
+             ] = result
     end
 
     test "extracts multiple anchors" do
@@ -29,11 +30,12 @@ defmodule Bindepot.Pypi.PackageIndexParserTest do
       result =
         [html]
         |> HtmlIndexParser.parse()
+        |> Enum.reverse()
 
-      assert %{
-               "A1" => %{uri: "a1.whl", name: "A1", hash: nil, metadata: %{}},
-               "A2" => %{uri: "a2.whl", name: "A2", hash: nil, metadata: %{}}
-             } = result
+      assert [
+               %{uri: "a1.whl", name: "A1", hash: nil, metadata: %{}},
+               %{uri: "a2.whl", name: "A2", hash: nil, metadata: %{}}
+             ] = result
     end
 
     test "ignores invalid anchors" do
@@ -48,13 +50,14 @@ defmodule Bindepot.Pypi.PackageIndexParserTest do
       result =
         [html]
         |> HtmlIndexParser.parse()
+        |> Enum.reverse()
 
-      assert %{
-               "A1" => %{uri: "a1.whl", name: "A1", hash: nil, metadata: %{}},
+      assert [
+               %{uri: "a1.whl", name: "A1", hash: nil, metadata: %{}},
                # %{uri: nil, name: "A2", hash: nil, metadata: %{"xhref" => "a2.whl"}},
                # %{uri: "test.whl", name: "", hash: nil, metadata: %{}},
-               "A3" => %{uri: "a3.whl", name: "A3", hash: nil, metadata: %{}}
-             } = result
+               %{uri: "a3.whl", name: "A3", hash: nil, metadata: %{}}
+             ] = result
     end
 
     test "extracts anchor split across chunks" do
@@ -63,20 +66,26 @@ defmodule Bindepot.Pypi.PackageIndexParserTest do
         "rt1.whl\">PKG</a>"
       ]
 
-      result = HtmlIndexParser.parse(stream)
+      result =
+        HtmlIndexParser.parse(stream)
+        |> Enum.reverse()
 
-      assert %{
-               "PKG" => %{
+      assert [
+               %{
                  uri: "part1.whl",
-                 name: "PKG"
+                 name: "PKG",
+                 hash: nil,
+                 metadata: %{}
                }
-             } = result
+             ] = result
     end
 
     test "handles attributes in any order" do
       html = ~S(<a data-x="1" rel="nofollow" href="ordered.whl">X</a>)
 
-      %{"X" => entry} = HtmlIndexParser.parse([html])
+      [entry] =
+        HtmlIndexParser.parse([html])
+        |> Enum.reverse()
 
       assert entry.uri == "ordered.whl"
       assert entry.name == "X"
@@ -88,7 +97,9 @@ defmodule Bindepot.Pypi.PackageIndexParserTest do
     test "extracts hash digest from fragment" do
       html = ~S(<a href="pkg.whl#sha256=abcdef1234">PKG</a>)
 
-      %{"PKG" => entry} = HtmlIndexParser.parse([html])
+      [entry] =
+        HtmlIndexParser.parse([html])
+        |> Enum.reverse()
 
       assert entry.uri == "pkg.whl#sha256=abcdef1234"
       assert entry.hash == {"sha256", "abcdef1234"}
@@ -97,7 +108,9 @@ defmodule Bindepot.Pypi.PackageIndexParserTest do
     test "extracts all attributes" do
       html = ~S(<a href="x.whl" data-a="123" data-b="456">X</a>)
 
-      %{"X" => entry} = HtmlIndexParser.parse([html])
+      [entry] =
+        HtmlIndexParser.parse([html])
+        |> Enum.reverse()
 
       assert entry.metadata["data-a"] == "123"
       assert entry.metadata["data-b"] == "456"
