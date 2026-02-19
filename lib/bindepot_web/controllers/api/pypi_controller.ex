@@ -1,6 +1,7 @@
 defmodule BindepotWeb.Api.PypiController do
   use BindepotWeb, :controller
 
+  require Logger
   alias Bindepot.Pypi.HtmlIndex
   alias Bindepot.Core.Assets
   alias Bindepot.Core.DistFiles
@@ -85,20 +86,41 @@ defmodule BindepotWeb.Api.PypiController do
   end
 
   def download(%{request_path: request_path} = conn, %{"path" => path} = params) do
+    Logger.debug("download #{request_path} (#{path})")
+
     cond do
       conn.assigns.repository.type in ["local", "remote", "virtual"] ->
         case path do
           ["simple"] ->
+            Logger.debug(
+              "Fetching repository index from #{conn.assigns.repository.name} (#{conn.assigns.repository.type})"
+            )
+
             handle_repo_index(conn, params)
 
           ["simple", package] ->
+            Logger.debug(
+              "Fetching project index #{package} from #{conn.assigns.repository.name} (#{conn.assigns.repository.type})"
+            )
+
             handle_project_index(conn, package, params)
+
+          ["simple", package, file] ->
+            Logger.debug(
+              "Fetching artifact #{package}/#{file} from #{conn.assigns.repository.name} (#{conn.assigns.repository.type})"
+            )
+
+            handle_artifact_download(conn, package, file, params)
         end
 
       String.last(request_path) != "/" ->
         redirect(conn, to: "#{request_path}/")
 
       true ->
+        Logger.debug(
+          "Handling a general request for #{conn.assigns.repository.name} (#{conn.assigns.repository.type})"
+        )
+
         conn
         |> put_resp_content_type("text/plain")
         |> send_resp(400, "'#{request_path}' cannot be used for upload. Use '/simple/'.")
@@ -109,6 +131,7 @@ defmodule BindepotWeb.Api.PypiController do
     body =
       conn.assigns.repository
       |> RepoIndex.get_repo_index()
+      |> then(fn {:ok, idx} -> idx end)
       |> HtmlIndex.to_html_repo_simple_index()
 
     conn
@@ -126,12 +149,46 @@ defmodule BindepotWeb.Api.PypiController do
         |> send_resp(404, "not found")
 
       _ ->
-        body = index |> HtmlIndex.to_html_repo_package_index()
+        body =
+          index
+          |> HtmlIndex.to_html_repo_project_index(Phoenix.Controller.current_url(conn))
 
         conn
         |> put_resp_content_type("text/html")
         |> send_resp(200, body)
     end
+  end
+
+  defp handle_artifact_download(conn, package, file, params) do
+    # TODO: Here is the opportunity to intercept remote packages when doing a full proxy.
+
+    file =
+      RepoIndex.get_project_index(conn.assigns.repository, package)
+      |> Enum.find(nil, fn f -> f.name == file end)
+
+    case file do
+      nil ->
+        conn
+        |> put_resp_content_type("text/plain")
+        |> send_resp(404, "not found")
+
+      %{repository: repo} ->
+        conn
+        |> put_resp_content_type("text/plain")
+        |> send_resp(404, "not found")
+    end
+
+    # stream = Assets.get_stream(conn.assigns.repository.id, rel_path)
+
+    # if is_nil(stream) do
+    #   conn
+    #   |> put_resp_content_type("application/json")
+    #   |> send_resp(404, ~S({ "error": "path does not point to a file" }))
+    # else
+    #   conn
+    #   |> put_resp_content_type("application/octet-stream")
+    #   |> Utils.send_chunked_stream(Path.basename(rel_path), stream)
+    # end
   end
 
   def proxy(conn, path_segments) do

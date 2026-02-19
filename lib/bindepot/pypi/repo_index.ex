@@ -84,22 +84,31 @@ defmodule Bindepot.Pypi.RepoIndex do
   end
 
   def get_repo_index(%{type: "virtual", repositories: children} = _repository) do
-    children
-    |> Enum.flat_map(fn key ->
-      key
-      |> Repositories.get_by_name()
-      |> get_repo_index()
-      |> then(fn {:ok, idx} -> idx end)
-      |> Enum.map(fn %{name: n} -> {n, %{name: n, uri: n <> "/"}} end)
-    end)
-    |> Map.new()
-    |> Map.values()
+    {:ok,
+     children
+     |> Enum.flat_map(fn key ->
+       key
+       |> Repositories.get_by_name()
+       |> get_repo_index()
+       |> then(fn {:ok, idx} -> idx end)
+       |> Enum.map(fn %{name: n} -> {n, %{name: n, uri: n <> "/"}} end)
+     end)
+     |> Map.new()
+     |> Map.values()}
   end
 
-  def get_project_index(%{type: "local", id: id} = _repository, project_name) do
+  def get_project_index(%{type: "local", id: id, name: name} = _repository, project_name) do
     id
     |> DistFiles.files(project_name)
-    |> Enum.map(&%{name: &1.name, uri: &1.name, hash: {"sha256", &1.blob.sha256}, metadata: %{}})
+    |> Enum.map(
+      &%{
+        repository: name,
+        name: &1.name,
+        uri: "#{&1.path}/#{&1.name}",
+        hash: {"sha256", &1.blob.sha256},
+        metadata: %{}
+      }
+    )
   end
 
   @doc ~S"""
@@ -125,8 +134,15 @@ defmodule Bindepot.Pypi.RepoIndex do
       key
       |> Repositories.get_by_name()
       |> get_project_index(project_name)
-      |> Enum.map(fn %{name: n} = proj ->
-        {n, %{name: n, uri: proj.uri, hash: proj.hash, metadata: proj.metadata}}
+      |> Enum.map(fn %{repository: repo_name, name: n} = proj ->
+        {n,
+         %{
+           repository: repo_name,
+           name: n,
+           uri: proj.uri,
+           hash: proj.hash,
+           metadata: proj.metadata
+         }}
       end)
     end)
     |> Map.new()
@@ -141,7 +157,7 @@ defmodule Bindepot.Pypi.RepoIndex do
 
     case fetch_index(url) do
       {:ok, %{status: :new, etag: _etag, items: projects}} ->
-        {:ok, projects}
+        {:ok, Enum.map(projects, fn p -> Map.put(p, :repository, repository.name) end)}
 
       {:ok, %{status: result}} when is_integer(result) ->
         {:error, "HTTP result: #{result}"}

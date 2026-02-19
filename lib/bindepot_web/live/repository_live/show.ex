@@ -8,8 +8,8 @@ defmodule BindepotWeb.RepositoryLive.Show do
   @impl true
   def mount(%{"id" => id}, _session, socket) do
     vrepo = Repositories.get(id)
-    vrepos = vrepo.repositories
-    query = from r in Bindepot.Core.Repository, where: r.id in ^vrepos
+    vrepos = vrepo.repositories |> IO.inspect()
+    query = from r in Bindepot.Core.Repository, where: r.name in ^vrepos
 
     subrepos = Bindepot.Repo.all(query)
 

@@ -27,7 +27,7 @@ defmodule Bindepot.Core.DistFiles do
         join: f in assoc(n, :dist_file),
         join: v in assoc(f, :version),
         join: p in assoc(v, :package),
-        where: n.repository_id == ^repository_id and p.name == ^package_name,
+        where: n.repository_id == ^repository_id and n.type == :file and p.name == ^package_name,
         preload: [:blob]
 
     Repo.all(q)
