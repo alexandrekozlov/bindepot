@@ -89,6 +89,9 @@ defmodule BindepotWeb.Api.PypiController do
     Logger.debug("download #{request_path} (#{path})")
 
     cond do
+      String.last(request_path) != "/" ->
+        redirect(conn, to: "#{request_path}/")
+
       conn.assigns.repository.type in ["local", "remote", "virtual"] ->
         case path do
           ["simple"] ->
@@ -113,6 +116,53 @@ defmodule BindepotWeb.Api.PypiController do
             handle_artifact_download(conn, package, file, params)
         end
 
+      true ->
+        Logger.debug(
+          "Handling a general request for #{conn.assigns.repository.name} (#{conn.assigns.repository.type})"
+        )
+
+        conn
+        |> put_resp_content_type("text/plain")
+        |> send_resp(400, "'#{request_path}' cannot be used for upload. Use '/simple/'.")
+    end
+  end
+
+  def repo_simple_index(%{request_path: request_path} = conn, params) do
+    Logger.debug("repo_simple_index #{request_path}")
+
+    cond do
+      String.last(request_path) != "/" ->
+        redirect(conn, to: "#{request_path}/")
+
+      conn.assigns.repository.type in ["local", "remote", "virtual"] ->
+        Logger.debug(
+          "Fetching repository index from #{conn.assigns.repository.name} (#{conn.assigns.repository.type})"
+        )
+
+        handle_repo_index(conn, params)
+
+      true ->
+        Logger.debug(
+          "Handling a general request for #{conn.assigns.repository.name} (#{conn.assigns.repository.type})"
+        )
+
+        conn
+        |> put_resp_content_type("text/plain")
+        |> send_resp(400, "'#{request_path}' cannot be used. Use '/simple/'.")
+    end
+  end
+
+  def project_simple_index(%{request_path: request_path} = conn, %{"project" => project} = params) do
+    Logger.debug("project_simple_index #{request_path} => #{project}")
+
+    cond do
+      conn.assigns.repository.type in ["local", "remote", "virtual"] ->
+        Logger.debug(
+          "Fetching project index #{project} from #{conn.assigns.repository.name} (#{conn.assigns.repository.type})"
+        )
+
+        handle_project_index(conn, project, params)
+
       String.last(request_path) != "/" ->
         redirect(conn, to: "#{request_path}/")
 
@@ -123,7 +173,7 @@ defmodule BindepotWeb.Api.PypiController do
 
         conn
         |> put_resp_content_type("text/plain")
-        |> send_resp(400, "'#{request_path}' cannot be used for upload. Use '/simple/'.")
+        |> send_resp(400, "'#{request_path}' cannot be used. Use '/simple/'.")
     end
   end
 
@@ -153,7 +203,7 @@ defmodule BindepotWeb.Api.PypiController do
           HtmlIndex.to_html_repo_project_index(
             index,
             Phoenix.Controller.current_url(conn),
-            "/api/assets/#{conn.assigns.repository.name}"
+            "/api/assets"
           )
 
         conn

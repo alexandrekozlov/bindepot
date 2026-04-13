@@ -34,6 +34,7 @@ defmodule Bindepot.Pypi.HtmlIndex do
 
   def to_html_project_index_entry(
         %{
+          repository: repo,
           name: name,
           uri: uri,
           hash: {algo, digest}
@@ -41,7 +42,7 @@ defmodule Bindepot.Pypi.HtmlIndex do
         url_base,
         prefix \\ ""
       ) do
-    url = make_resource_url(url_base, uri, prefix)
+    url = make_resource_url(url_base, repo, uri, prefix)
 
     ~s(<a href="#{url}\##{algo}=#{digest}" #{generate_metadata(Map.get(entry, :metadata))}>#{name}</a>)
   end
@@ -54,7 +55,7 @@ defmodule Bindepot.Pypi.HtmlIndex do
     Enum.reduce(metadata, "", fn {k, v}, s -> ~s(#{k}="#{v} ") <> s end)
   end
 
-  defp make_resource_url(url_base, uri, prefix \\ "") do
+  defp make_resource_url(url_base, repo, uri, prefix \\ "") do
     b = URI.parse(url_base)
     p = URI.parse(prefix)
     u = URI.parse(uri)
@@ -64,7 +65,10 @@ defmodule Bindepot.Pypi.HtmlIndex do
         if is_nil(p.path) do
           URI.merge(b, u)
         else
-          URI.append_path(URI.merge(b, p), u.path)
+          b
+            |> URI.merge(p)
+            |> URI.append_path("/" <> repo)
+            |> URI.append_path(u.path)
         end
 
       _h ->

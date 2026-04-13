@@ -21,7 +21,8 @@ defmodule Bindepot.Core.Packages do
         inner_join: n in Node,
         on: f.node_id == n.id,
         where: n.repository_id == ^repository_id,
-        select: p
+        select: p,
+        distinct: p.name
 
     Repo.all(q)
   end

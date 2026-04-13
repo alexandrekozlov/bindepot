@@ -74,10 +74,11 @@ defmodule BindepotWeb.Router do
     end
 
     scope "/pypi" do
-      #   get "/:repo/simple/", PypiController, :repo_simple_index
-      #   get "/:repo/simple/:name/", PypiController, :package_simple_index
+      pipe_through :repo_io
+        get "/:repo/simple/", PypiController, :repo_simple_index
+        get "/:repo/simple/:project/", PypiController, :project_simple_index
 
-      #   get "/:repository/packages/:project/:version/:filename", PypiController, :serve_package
+      #  get "/:repository/packages/:project/:version/:filename", PypiController, :serve_package
       #   get "/:repository/packages/:project/:version/:filename/METADATA", PypiController, :serve_metadata
 
       #   post "/:repository/legacy/", PypiController, :legacy_upload
