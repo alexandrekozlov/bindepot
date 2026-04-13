@@ -1,4 +1,6 @@
 defmodule Bindepot.Pypi.HtmlIndex do
+  require Logger
+
   # We are sorting entries, which is techincally not necessary, but convenient
   def to_html_repo_simple_index(repo_index) do
     [~s"\t</body>\n</html>\n"]
@@ -13,13 +15,13 @@ defmodule Bindepot.Pypi.HtmlIndex do
     |> then(&[~s"<!DOCTYPE html>\n<html>\n\t<body>" | &1])
   end
 
-  def to_html_repo_project_index(project_index, url_base) do
+  def to_html_repo_project_index(project_index, url_base, prefix \\ "") do
     [~s"\t</body>\n</html>\n"]
     |> then(
       &[
         project_index
         |> Enum.sort(fn a, b -> a.name < b.name end)
-        |> Enum.map(fn e -> to_html_project_index_entry(e, url_base) <> "<br>\n" end)
+        |> Enum.map(fn e -> to_html_project_index_entry(e, url_base, prefix) <> "<br>\n" end)
         | &1
       ]
     )
@@ -36,9 +38,10 @@ defmodule Bindepot.Pypi.HtmlIndex do
           uri: uri,
           hash: {algo, digest}
         } = entry,
-        url_base
+        url_base,
+        prefix \\ ""
       ) do
-    url = URI.merge(URI.parse(url_base), uri)
+    url = make_resource_url(url_base, uri, prefix)
 
     ~s(<a href="#{url}\##{algo}=#{digest}" #{generate_metadata(Map.get(entry, :metadata))}>#{name}</a>)
   end
@@ -49,5 +52,23 @@ defmodule Bindepot.Pypi.HtmlIndex do
 
   def generate_metadata(metadata) do
     Enum.reduce(metadata, "", fn {k, v}, s -> ~s(#{k}="#{v} ") <> s end)
+  end
+
+  defp make_resource_url(url_base, uri, prefix \\ "") do
+    b = URI.parse(url_base)
+    p = URI.parse(prefix)
+    u = URI.parse(uri)
+
+    case u.host do
+      nil ->
+        if is_nil(p.path) do
+          URI.merge(b, u)
+        else
+          URI.append_path(URI.merge(b, p), u.path)
+        end
+
+      _h ->
+        u
+    end
   end
 end

@@ -54,7 +54,7 @@ defmodule BindepotWeb.Router do
     scope "/storage" do
       pipe_through :repo_io
 
-      #   "/:repo/*path", where path is emppty - return repository info
+      #   "/:repo/*path", where path is empty - return repository info
       #   "/:repo/*path", where path is a directory - return directory info
       #   "/:repo/*path", where path is a file - return file info
       #   "/:repo/*path?list", where path is a directory - list items.
@@ -65,6 +65,7 @@ defmodule BindepotWeb.Router do
       get "/:repo/*path", StorageController, :get
     end
 
+    # TODO: may be rename to "/files" to avoid unnecessary obfuscation of the meaning.
     scope "/assets" do
       pipe_through :repo_io
 

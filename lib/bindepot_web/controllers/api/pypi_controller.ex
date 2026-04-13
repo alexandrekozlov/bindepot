@@ -150,8 +150,11 @@ defmodule BindepotWeb.Api.PypiController do
 
       _ ->
         body =
-          index
-          |> HtmlIndex.to_html_repo_project_index(Phoenix.Controller.current_url(conn))
+          HtmlIndex.to_html_repo_project_index(
+            index,
+            Phoenix.Controller.current_url(conn),
+            "/api/assets/#{conn.assigns.repository.name}"
+          )
 
         conn
         |> put_resp_content_type("text/html")
