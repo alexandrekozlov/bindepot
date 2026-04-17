@@ -116,6 +116,15 @@ defmodule Bindepot.Pypi.RepoIndex do
 
   """
   def get_project_index(%{type: "remote"} = repository, project_name) do
+    # TODO: Can we optimize here? We fetch the whole index (pypi.org is the worst case)
+    # just to figure the projet URL. Can we first try to get the remote project index
+    # by just composing a url and if this does not work, fall back
+    # into retrieving the whole index to figure the project URL.
+
+    # An important behavior was discovered with help of Claude - Artifactory hardcodes
+    # the virtual repo resolution order - local, remote-cache, remote.
+    # The order is respected WITHIN each repo type.
+    # Also, Nexus does not do that and resolves in order given, irrespective repo type.
     {:ok, repo_index} = get_repo_index(repository)
 
     case Enum.find(repo_index, nil, fn x -> x.name == project_name end) do
@@ -129,6 +138,7 @@ defmodule Bindepot.Pypi.RepoIndex do
   end
 
   def get_project_index(%{type: "virtual", repositories: children}, project_name) do
+    # TODO: We can probably cache part and full index here.
     children
     |> Enum.flat_map(fn key ->
       key
