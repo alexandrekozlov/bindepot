@@ -44,10 +44,7 @@ defmodule Bindepot.Pypi.RepoIndex do
     node = Bindepot.Core.Nodes.get(id, "/.pypi/index.json")
     etag = get_node_etag(node)
 
-    url =
-      repository.url
-      |> URI.parse()
-      |> URI.append_path("/simple/")
+    url = get_remote_repo_url(repository)
 
     Logger.debug("fetching remote repo index from #{url}")
 
@@ -116,29 +113,41 @@ defmodule Bindepot.Pypi.RepoIndex do
 
   """
   def get_project_index(%{type: "remote"} = repository, project_name) do
-    # TODO: Can we optimize here? We fetch the whole index (pypi.org is the worst case)
-    # just to figure the projet URL. Can we first try to get the remote project index
-    # by just composing a url and if this does not work, fall back
-    # into retrieving the whole index to figure the project URL.
+    # try first to deduce the URL by composing repo URL and the project name
+    url = speculate_remote_project_url(repository, project_name)
 
-    # An important behavior was discovered with help of Claude - Artifactory hardcodes
-    # the virtual repo resolution order - local, remote-cache, remote.
-    # The order is respected WITHIN each repo type.
-    # Also, Nexus does not do that and resolves in order given, irrespective repo type.
-    {:ok, repo_index} = get_repo_index(repository)
-
-    case Enum.find(repo_index, nil, fn x -> x.name == project_name end) do
-      nil ->
-        []
-
-      %{uri: url} ->
-        {:ok, projects} = get_remote_project_index(repository, url)
+    case get_remote_project_index(repository, url) do
+      {:ok, projects} ->
         projects
+
+      {:error, _} ->
+        # Cannot fetch project index using URL composition.
+        # Get the repo index to figure actual URL.
+        {:ok, repo_index} = get_repo_index(repository)
+
+        case Enum.find(repo_index, nil, fn x -> x.name == project_name end) do
+          nil ->
+            []
+
+          %{uri: url} ->
+            {:ok, projects} = get_remote_project_index(repository, url)
+            projects
+        end
     end
   end
 
   def get_project_index(%{type: "virtual", repositories: children}, project_name) do
-    # TODO: We can probably cache part and full index here.
+    # Artifactory hardcodes repository resolution order by type. Within the
+    # type, repositories are resolved in the order they are specified. Order of
+    # resolution:
+    #   * local
+    #   * remote-cace
+    #   * remote
+    #
+    # The behavior is distinct from Nexus, where all repositories are resolved
+    # in the order given, irrespective their type.
+    #
+    # Here we follow the Nexus approach.
     children
     |> Enum.flat_map(fn key ->
       key
@@ -253,6 +262,19 @@ defmodule Bindepot.Pypi.RepoIndex do
       "hash" -> :hash
       _ -> str
     end
+  end
+
+  defp get_remote_repo_url(repository) do
+    repository.url
+    |> URI.parse()
+    |> URI.append_path("/simple/")
+  end
+
+  defp speculate_remote_project_url(repository, project_name) do
+    repository.url
+    |> URI.parse()
+    |> URI.append_path("/simple/")
+    |> URI.append_path(project_name)
   end
 
   def measure(function) do

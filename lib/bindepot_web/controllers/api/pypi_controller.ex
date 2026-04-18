@@ -225,7 +225,7 @@ defmodule BindepotWeb.Api.PypiController do
         |> put_resp_content_type("text/plain")
         |> send_resp(404, "not found")
 
-      %{repository: repo} ->
+      %{repository: _repo} ->
         conn
         |> put_resp_content_type("text/plain")
         |> send_resp(404, "not found")

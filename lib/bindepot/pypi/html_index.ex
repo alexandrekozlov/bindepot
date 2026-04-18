@@ -32,6 +32,17 @@ defmodule Bindepot.Pypi.HtmlIndex do
     ~s(<a href="#{uri}" #{generate_metadata(Map.get(entry, :metadata))}>#{name}</a>)
   end
 
+  @doc ~S"""
+    Generates an HTML fragment for a package entry.
+
+    Example:
+
+      https://myrepo.company.xyz/api/assets/myproject/package-1.0.wheel
+
+    * `repo`      `{ name: "myproject", uri: "myproject/package-1.0.wheel" }`
+    * `url_base`  `https://myrepo.company.xyz`
+    * `prefix`    `/api/assets`
+  """
   def to_html_project_index_entry(
         %{
           repository: repo,
@@ -66,9 +77,9 @@ defmodule Bindepot.Pypi.HtmlIndex do
           URI.merge(b, u)
         else
           b
-            |> URI.merge(p)
-            |> URI.append_path("/" <> repo)
-            |> URI.append_path(u.path)
+          |> URI.merge(p)
+          |> URI.append_path("/" <> repo)
+          |> URI.append_path(u.path)
         end
 
       _h ->
