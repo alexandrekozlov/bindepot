@@ -2,6 +2,7 @@ defmodule BindepotWeb.Api.PypiController do
   use BindepotWeb, :controller
 
   require Logger
+  alias Bindepot.Pypi.MetadataExtractor
   alias Bindepot.Pypi.HtmlIndex
   alias Bindepot.Core.Assets
   alias Bindepot.Core.DistFiles
@@ -9,13 +10,18 @@ defmodule BindepotWeb.Api.PypiController do
 
   # https://peps.python.org/pep-0425/     PEP 425 – Compatibility Tags for Built Distributions
   # https://peps.python.org/pep-0503/     PEP 503 – Simple Repository API
+  # https://peps.python.org/pep-0566/     PEP 566 – Metadata for Python Software Packages 2.1
   # https://peps.python.org/pep-0691/     PEP 691 – JSON-based Simple API for Python Package Indexes
   # https://peps.python.org/pep-0700/     PEP 700 – Additional Fields for the Simple API for Package Indexes
   # https://peps.python.org/pep-0721/     PEP 721 – Using tarfile.data_filter for source distribution extraction
   # https://packaging.python.org/en/latest/specifications/source-distribution-format/#sdist-archive-features    Source distribution archive features
   # https://packaging.python.org/en/latest/specifications/    PyPA specifications
   # https://packaging.python.org/en/latest/specifications/section-package-indices/    Package Index Interfaces
+  # https://packaging.python.org/en/latest/specifications/binary-distribution-format/   Wheel distribution format
+  # https://packaging.python.org/en/latest/specifications/source-distribution-format/   Source tarball distribution format
   # https://docs.pypi.org/api/index-api/  Index API
+  #
+  # https://packaging.python.org/en/latest/specifications/core-metadata/     Core metadata specifications
   #
   # Also relevant:
   # https://peps.python.org/pep-0658/     PEP 658 – Serve Distribution Metadata in the Simple Repository API
@@ -59,6 +65,23 @@ defmodule BindepotWeb.Api.PypiController do
       |> Path.join(package_name)
       |> Path.join(package_version)
       |> Path.join(asset_filename)
+
+    # TODO:
+    #  * Determine file type (wheel vs source bundle)
+    #  * Extract wheel metadata
+    #  * Validate naming convention
+    #  * Generate normalized name? We can generate and store it here or generate it during index creation.
+    #  * Compare metadata and values from name
+    #  * Compare metadata and metadata passed with HTTP request
+    #  * If validations pass, store file and metadata
+
+    cond do
+      String.ends_with?(temp_file, [".whl"]) ->
+        MetadataExtractor.extract_wheel_metadata(temp_file)
+
+      String.ends_with?(temp_file, [".tgz", ".tar.gz"]) ->
+        MetadataExtractor.extract_source_metadata(temp_file)
+    end
 
     {:ok, node} = Assets.put_file(repo.id, store_path, temp_file, replace: true)
 
