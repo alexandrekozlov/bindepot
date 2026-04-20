@@ -1,9 +1,9 @@
 defmodule Bindepot.Pypi.MetadataExtractor do
-
   def extract_wheel_metadata(zip_path) do
     with {:ok, files} <- :zip.list_dir(String.to_charlist(zip_path)) do
       files
-      |> Enum.map(&elem(&1, 0)) # extract file names
+      |> Enum.filter(&(elem(&1, 0) == :zip_file))
+      |> Enum.map(&elem(&1, 1))
       |> Enum.find(&metadata_path?/1)
       |> case do
         nil ->
@@ -45,10 +45,7 @@ defmodule Bindepot.Pypi.MetadataExtractor do
   end
 
   defp extract_from_zip(zip_path, path) do
-    case :zip.extract(String.to_charlist(zip_path),
-           file_list: [path],
-           memory: true
-         ) do
+    case :zip.unzip(String.to_charlist(zip_path), [{:file_list, [path]}, :memory]) do
       {:ok, [{_filename, content}]} ->
         {:ok, to_string(content)}
 
@@ -58,7 +55,8 @@ defmodule Bindepot.Pypi.MetadataExtractor do
   end
 
   defp extract_from_tar(tar_path, path) do
-    case :erl_tar.extract(tar_path,
+    case :erl_tar.extract(
+           tar_path,
            [:compressed, :memory, {:files, [path]}]
          ) do
       {:ok, [{_filename, content}]} ->
