@@ -55,6 +55,10 @@ defmodule Bindepot.Pypi.HtmlIndex do
       ) do
     url = make_resource_url(url_base, repo, uri, prefix)
 
+    # BUG: At the moment remote repo uses URL verbatim. I.e. URL already includes hash, if present
+    # and on top of that we slap our hash (recovered from the original entry).
+    # Either do not append hash to remote entries,
+    # or remove hash when parsing remote entries.
     ~s(<a href="#{url}\##{algo}=#{digest}" #{generate_metadata(Map.get(entry, :metadata))}>#{name}</a>)
   end
 

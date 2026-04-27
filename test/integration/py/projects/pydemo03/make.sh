@@ -2,6 +2,8 @@
 
 set -x -e
 
+pip install virtualenv
+
 if [ -z "$VIRTUAL_ENV" ] ; then
     rm -rf venv
     virtualenv venv

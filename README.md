@@ -27,7 +27,7 @@ Assuming a fresh Linux installation.
 Install core tools and PostgreSQL.
 ```
 dnf install -y git
-dnf install -y gcc g++ automake autoconf
+dnf install -y gcc g++ automake autoconf patch  
 dnf install -y ncurses-devel wxGTK-devel wxBase
 dnf install -y openssl-devel
 dnf install -y libiodbc unixODBC-devel.x86_64
@@ -85,10 +85,18 @@ wget https://github.com/asdf-vm/asdf/releases/download/v0.19.0/asdf-v0.19.0-linu
 tar -xvf asdf-v0.19.0-linux-amd64.tar.gz -C /usr/local/bin/ 
 ```
 
+Add the following lines to `.bashrc`:
+```
+export PATH="${ASDF_DATA_DIR:-$HOME/.asdf}/shims:$PATH"
+. <(asdf completion bash)
+```
+
+
 Add ASDF plugins:
 ```
 asdf plugin add erlang
 asdf plugin add elixir
+asdf plugin add python
 ```
 
 Navigate to bindepot project and install tools:

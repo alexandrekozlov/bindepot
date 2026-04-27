@@ -111,9 +111,15 @@ defmodule Bindepot.Pypi.HtmlIndexParser do
           nil
 
         _ ->
+          # TODO: Here we may need to strip the hash from URL
           case Regex.run(@hash_regex, href) do
-            [_, algo, digest] -> {algo, digest}
-            _ -> nil
+            [_, algo, digest] ->
+              # BUG: Here we extract hash, but we still keep it as part URL
+              # This creates a double hash, when later generating project index.
+              # href = Regex.replace(@hash_regex, href, "")
+              {algo, digest}
+
+              _ -> nil
           end
       end
 

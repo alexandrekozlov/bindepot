@@ -273,8 +273,7 @@ defmodule Bindepot.Pypi.RepoIndex do
   defp speculate_remote_project_url(repository, project_name) do
     repository.url
     |> URI.parse()
-    |> URI.append_path("/simple/")
-    |> URI.append_path(project_name)
+    |> URI.append_path("/simple/#{project_name}")
   end
 
   def measure(function) do
