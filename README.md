@@ -30,7 +30,8 @@ dnf install -y git
 dnf install -y gcc g++ automake autoconf
 dnf install -y ncurses-devel wxGTK-devel wxBase
 dnf install -y openssl-devel
-dnf install -y libiodbc unixODBC-devel.x86_64 erlang-odbc.x86_64
+dnf install -y libiodbc unixODBC-devel.x86_64
+dnf install -y erlang-odbc.x86_64 erlang-xmerl
 dnf install -y libxslt fop
 dnf install -y java-25-openjdk-devel
 dnf install -y postgresql postgresql-devel postgresql-server postgresql-contrib postgresql-docs
@@ -39,6 +40,41 @@ rpm -i https://ftp.postgresql.org/pub/pgadmin/pgadmin4/yum/pgadmin4-fedora-repo-
 dnf remove postgresql-private-devel
 dnf install -y pgadmin4-desktop
 ```
+
+Setup PostgreSQL database:
+```
+postgresql-setup --initdb
+systemctl start postgresql
+systemctl enable postgresql
+
+```
+
+Configure user:
+```
+sudo -u postgres createuser "$USER"
+sudo -u postgres psql -c "ALTER USER \"$USER\" WITH SUPERUSER ;"
+sudo -u postgres psql -c "ALTER USER \"$USER\" WITH CREATEDB CREATEROLE ;"
+
+```
+
+Edit `/var/lib/pgsql/data/pg_hba.conf`:
+
+Change last column for loopback addresses from `ident` to `trust`
+```
+# IPv4 local connections:
+host    all             all             127.0.0.1/32            ident
+# IPv6 local connections:
+host    all             all             ::1/128                 ident
+
+```
+
+This can also be done with `sed`:
+```
+sed -r -i -e 's/^(host[ \t]+all[ \t]+all[ \t]+(127\.0\.0\.1\/32|::1\/128)[ \t]+)ident.*$/\1trust/g' /var/lib/pgsql/data/pg_hba.conf
+```
+
+Optionally you may need to modify `/var/lib/pgsql/data/postgresql.conf` `listen_addresses` to add other network addresses, like podman containers.
+
 
 Download and install Visual Studio Code
 
